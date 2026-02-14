@@ -7,6 +7,8 @@ export enum ServiceStatus {
   COMPLETED = 'Concluído'
 }
 
+export type PaymentMethod = 'Dinheiro' | 'PIX' | 'Cartão' | 'Misto' | 'Nenhum';
+
 export interface Part {
   id: string;
   name: string;
@@ -33,17 +35,20 @@ export interface ServiceRecord {
   ownerPhone: string;
   // Service Info
   entryDate: string;
-  scheduledDate?: string; // New field
-  scheduledTime?: string; // New field
-  description: string; // Problem reported
+  scheduledDate?: string;
+  scheduledTime?: string;
+  description: string;
   diagnosis: string;
   laborCost: number;
   laborDescription: string;
   parts: Part[];
   warrantyInfo: string;
+  // Finance Info
+  paymentMethod: PaymentMethod;
+  amountPaid: number;
   // Meta
   status: ServiceStatus;
-  clientSignature?: string; // Base64 string
+  clientSignature?: string;
   createdAt: number;
   updatedAt: number;
 }

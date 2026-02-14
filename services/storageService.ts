@@ -31,6 +31,9 @@ const MOCK_DATA: ServiceRecord[] = [
       { id: 'p3', name: 'Cabo de Vela', quantity: 1, unitPrice: 180 }
     ],
     warrantyInfo: '3 meses para peças e mão de obra',
+    // Fix: Added missing paymentMethod and amountPaid properties to match ServiceRecord type
+    paymentMethod: 'Nenhum',
+    amountPaid: 0,
     status: ServiceStatus.IN_PROGRESS,
     clientSignature: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
     createdAt: Date.now(),
