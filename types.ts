@@ -1,3 +1,4 @@
+
 export enum ServiceStatus {
   ANALYSIS = 'Em Análise',
   PENDING_APPROVAL = 'Aguardando Aprovação',
@@ -13,6 +14,12 @@ export interface Part {
   unitPrice: number;
 }
 
+export interface WorkshopSettings {
+  name: string;
+  phone: string;
+  address: string;
+}
+
 export interface ServiceRecord {
   id: string;
   // Car Info
@@ -20,11 +27,14 @@ export interface ServiceRecord {
   carModel: string;
   carYear: string;
   carColor: string;
+  carMileage: string;
   // Owner Info
   ownerName: string;
   ownerPhone: string;
   // Service Info
   entryDate: string;
+  scheduledDate?: string; // New field
+  scheduledTime?: string; // New field
   description: string; // Problem reported
   diagnosis: string;
   laborCost: number;
@@ -38,4 +48,4 @@ export interface ServiceRecord {
   updatedAt: number;
 }
 
-export type ViewState = 'DASHBOARD' | 'CREATE_EDIT' | 'DETAILS';
+export type ViewState = 'DASHBOARD' | 'CREATE_EDIT' | 'DETAILS' | 'SETTINGS';
