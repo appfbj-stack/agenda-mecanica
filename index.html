@@ -1,13 +1,18 @@
 
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" class="antialiased">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>Oficina+</title>
     <meta name="description" content="Gestão simples para oficinas mecânicas" />
-    <link rel="manifest" href="manifest.json" />
+    <link rel="manifest" href="/manifest.json" />
     <meta name="theme-color" content="#4f46e5" />
+    
+    <!-- iOS support -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Oficina+" />
     <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiB2aWV3Qm94PSIwIDAgNTEyIDUxMiI+PHJlY3Qgd2lkdGg9IjUxMiIgaGVpZ2h0PSI1MTIiIGZpbGw9IiM0ZjQ2ZTUiIHJ4PSI5NiIvPjxwYXRoIGQ9Ik0zNjAgMTYwbC00OC00OC0xNDQgMTQ0IDQ4IDQ4IDE0NC0xNDR6IiBmaWxsPSJ3aGl0ZSIvPjxwYXRoIGQ9Ik0xNjAgMzYwbDQ4IDQ4IDE0NC0xNDQtNDgtNDgtMTQ0IDE0NHoiIGZpbGw9IndoaXRlIi8+PC9zdmc+" />
     
     <script src="https://cdn.tailwindcss.com"></script>
@@ -31,6 +36,7 @@
       body {
         font-family: 'Outfit', sans-serif;
         overscroll-behavior-y: none;
+        -webkit-tap-highlight-color: transparent;
       }
       ::-webkit-scrollbar { width: 6px; }
       ::-webkit-scrollbar-track { background: transparent; }
@@ -56,15 +62,19 @@
     }
     </script>
     <script>
+      // Theme check
       if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
         document.documentElement.classList.add('dark')
       } else {
         document.documentElement.classList.remove('dark')
       }
 
+      // Service Worker registration with absolute path
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW registration failed', err));
+          navigator.serviceWorker.register('/sw.js')
+            .then(reg => console.log('SW registrado com sucesso'))
+            .catch(err => console.log('Erro ao registrar SW:', err));
         });
       }
     </script>

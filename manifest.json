@@ -3,8 +3,10 @@
   "name": "Oficina Plus - Gestão",
   "short_name": "Oficina+",
   "description": "Sistema de gestão inteligente para oficinas mecânicas.",
-  "start_url": "./",
+  "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#4f46e5",
   "theme_color": "#4f46e5",
   "icons": [
