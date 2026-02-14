@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Car, User, Wrench, DollarSign, AlertCircle, Moon, Sun, FileDown, MessageCircle, Share2, Settings, PenTool, Calendar, Clock } from 'lucide-react';
+import { Plus, Search, Car, User, Wrench, DollarSign, AlertCircle, Moon, Sun, FileDown, MessageCircle, Share2, Settings, PenTool, Calendar, Clock, Loader2 } from 'lucide-react';
 import { jsPDF } from "jspdf";
 import { ServiceRecord, ServiceStatus, ViewState, Part, WorkshopSettings } from './types';
 import { Button, Input, Card, Header, TextArea } from './components/UI';
@@ -206,6 +206,15 @@ const Dashboard: React.FC<{
         </div>
 
         <div className="grid gap-4">
+          {filtered.length === 0 && (
+            <div className="py-20 text-center space-y-4 animate-enter">
+              <div className="w-20 h-20 bg-indigo-50 dark:bg-slate-900 rounded-full flex items-center justify-center mx-auto">
+                 <Car size={32} className="text-indigo-200" />
+              </div>
+              <p className="text-slate-400 font-medium">Nenhum serviço encontrado.</p>
+              <Button onClick={onNew} variant="outline" size="sm">Adicionar Primeiro</Button>
+            </div>
+          )}
           {filtered.map((service, index) => (
             <Card key={service.id} onClick={() => onSelect(service.id)} className="border-l-[6px] border-l-indigo-500 animate-enter" style={{ animationDelay: `${index * 50}ms` }}>
               <div className="flex justify-between items-start">
@@ -444,13 +453,21 @@ const App: React.FC = () => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [settings, setSettings] = useState<WorkshopSettings | null>(null);
   const [services, setServices] = useState<ServiceRecord[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const init = async () => {
-      const s = await db.getSettings();
-      const sv = await db.getServices();
-      setSettings(s);
-      setServices(sv);
+      try {
+        setIsLoading(true);
+        const s = await db.getSettings();
+        const sv = await db.getServices();
+        setSettings(s);
+        setServices(sv);
+      } catch (err) {
+        console.error("Erro na inicialização:", err);
+      } finally {
+        setIsLoading(false);
+      }
     };
     init();
   }, [view]);
@@ -466,7 +483,20 @@ const App: React.FC = () => {
     setView('DASHBOARD');
   };
 
-  if (!settings) return null;
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-indigo-600 flex flex-col items-center justify-center text-white p-6 text-center">
+        <div className="w-24 h-24 bg-white/20 rounded-3xl flex items-center justify-center mb-6 shadow-2xl backdrop-blur-md">
+           <Wrench size={48} className="animate-bounce" />
+        </div>
+        <h1 className="text-3xl font-extrabold mb-2 tracking-tight">Oficina+</h1>
+        <p className="opacity-80 font-medium">Iniciando seu sistema de gestão...</p>
+        <Loader2 className="mt-8 animate-spin opacity-40" size={32} />
+      </div>
+    );
+  }
+
+  if (!settings) return <div className="p-10 text-center">Erro crítico: Não foi possível carregar as configurações.</div>;
 
   return (
     <div className="max-w-md mx-auto bg-white dark:bg-slate-950 min-h-screen shadow-2xl relative">

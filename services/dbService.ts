@@ -8,20 +8,24 @@ const STORE_SETTINGS = 'settings';
 
 const openDB = (): Promise<IDBDatabase> => {
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    try {
+      const request = indexedDB.open(DB_NAME, DB_VERSION);
 
-    request.onerror = () => reject(request.error);
-    request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => resolve(request.result);
 
-    request.onupgradeneeded = (event: IDBVersionChangeEvent) => {
-      const db = (event.target as IDBOpenDBRequest).result;
-      if (!db.objectStoreNames.contains(STORE_SERVICES)) {
-        db.createObjectStore(STORE_SERVICES, { keyPath: 'id' });
-      }
-      if (!db.objectStoreNames.contains(STORE_SETTINGS)) {
-        db.createObjectStore(STORE_SETTINGS, { keyPath: 'key' });
-      }
-    };
+      request.onupgradeneeded = (event: IDBVersionChangeEvent) => {
+        const db = (event.target as IDBOpenDBRequest).result;
+        if (!db.objectStoreNames.contains(STORE_SERVICES)) {
+          db.createObjectStore(STORE_SERVICES, { keyPath: 'id' });
+        }
+        if (!db.objectStoreNames.contains(STORE_SETTINGS)) {
+          db.createObjectStore(STORE_SETTINGS, { keyPath: 'key' });
+        }
+      };
+    } catch (e) {
+      reject(e);
+    }
   });
 };
 
@@ -33,7 +37,6 @@ export const getServices = async (): Promise<ServiceRecord[]> => {
     const request = store.getAll();
     request.onsuccess = () => {
       const results = request.result as ServiceRecord[];
-      // Sort by creation date descending
       resolve(results.sort((a, b) => b.createdAt - a.createdAt));
     };
     request.onerror = () => reject(request.error);
