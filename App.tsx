@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Car, User, Wrench, DollarSign, AlertCircle, Moon, Sun, FileDown, MessageCircle, Share2, Settings, PenTool, Calendar, Clock, Loader2 } from 'lucide-react';
+import { Plus, Search, Car, User, Wrench, DollarSign, AlertCircle, Moon, Sun, FileDown, MessageCircle, Share2, Settings, PenTool, Calendar, Clock, Loader2, Trash2 } from 'lucide-react';
 import { jsPDF } from "jspdf";
 import { ServiceRecord, ServiceStatus, ViewState, Part, WorkshopSettings } from './types';
 import { Button, Input, Card, Header, TextArea } from './components/UI';
@@ -13,14 +13,28 @@ import { STATUS_BADGE_STYLES, STATUS_COLORS } from './constants';
 const generateServicePDF = (service: ServiceRecord, settings: WorkshopSettings) => {
   const doc = new jsPDF();
   const margin = 20;
+  const pageWidth = 210;
+  const pageHeight = 297;
   let y = 20;
 
+  const checkPageBreak = (needed: number) => {
+    if (y + needed > pageHeight - 20) {
+      doc.addPage();
+      y = 20;
+      return true;
+    }
+    return false;
+  };
+
+  // Header
   doc.setFontSize(22);
   doc.setTextColor(79, 70, 229);
+  doc.setFont("helvetica", "bold");
   doc.text(settings.name.toUpperCase(), margin, y);
   
   doc.setFontSize(10);
   doc.setTextColor(100);
+  doc.setFont("helvetica", "normal");
   doc.text("Ordem de Serviço / Orçamento", margin + 100, y);
   
   y += 6;
@@ -32,109 +46,144 @@ const generateServicePDF = (service: ServiceRecord, settings: WorkshopSettings) 
   doc.line(margin, y, 190, y);
   y += 10;
 
-  doc.setFontSize(12);
+  // Customer Info
+  doc.setFontSize(11);
   doc.setTextColor(0);
   doc.setFont("helvetica", "bold");
-  doc.text("Cliente:", margin, y);
+  doc.text("CLIENTE:", margin, y);
   doc.setFont("helvetica", "normal");
   doc.text(service.ownerName, margin + 25, y);
   
   doc.setFont("helvetica", "bold");
-  doc.text("Telefone:", margin + 100, y);
+  doc.text("TEL:", margin + 110, y);
   doc.setFont("helvetica", "normal");
   doc.text(service.ownerPhone, margin + 125, y);
   
   y += 8;
   doc.setFont("helvetica", "bold");
-  doc.text("Veículo:", margin, y);
+  doc.text("VEÍCULO:", margin, y);
   doc.setFont("helvetica", "normal");
   doc.text(`${service.carModel} (${service.carYear})`, margin + 25, y);
   
   doc.setFont("helvetica", "bold");
-  doc.text("Placa:", margin + 100, y);
+  doc.text("PLACA:", margin + 110, y);
   doc.setFont("helvetica", "normal");
   doc.text(service.carPlate.toUpperCase(), margin + 125, y);
 
   y += 8;
   doc.setFont("helvetica", "bold");
-  doc.text("Agendamento:", margin, y);
+  doc.text("DATA/AGENDA:", margin, y);
   doc.setFont("helvetica", "normal");
-  const agendamento = service.scheduledDate ? `${service.scheduledDate.split('-').reverse().join('/')} às ${service.scheduledTime || '--:--'}` : 'Não agendado';
+  const agendamento = service.scheduledDate ? `${service.scheduledDate.split('-').reverse().join('/')} às ${service.scheduledTime || '--:--'}` : service.entryDate;
   doc.text(agendamento, margin + 35, y);
 
   doc.setFont("helvetica", "bold");
-  doc.text("KM:", margin + 100, y);
+  doc.text("KM:", margin + 110, y);
   doc.setFont("helvetica", "normal");
   doc.text(`${service.carMileage} km`, margin + 125, y);
 
-  y += 15;
+  y += 12;
   
-  doc.setFillColor(245, 245, 245);
-  doc.rect(margin, y, 170, 25, 'F');
-  y += 6;
+  // Description Block
+  doc.setFillColor(248, 250, 252);
+  doc.rect(margin, y, 170, 30, 'F');
+  y += 8;
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
-  doc.text("RELATO & DIAGNÓSTICO", margin + 5, y);
+  doc.text("RELATO DO CLIENTE:", margin + 5, y);
   y += 6;
   doc.setFont("helvetica", "normal");
-  doc.text(`Relato: ${service.description}`, margin + 5, y);
-  y += 6;
-  doc.text(`Diagnóstico: ${service.diagnosis}`, margin + 5, y);
+  doc.setFontSize(9);
+  const splitRelato = doc.splitTextToSize(service.description, 160);
+  doc.text(splitRelato, margin + 5, y);
   
-  y += 20;
+  y += 16;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.text("DIAGNÓSTICO TÉCNICO:", margin + 5, y);
+  y += 6;
+  doc.setFont("helvetica", "normal");
+  const splitDiag = doc.splitTextToSize(service.diagnosis || "Em análise", 160);
+  doc.text(splitDiag, margin + 5, y);
+  
+  y += 15;
 
+  // Parts Table Header
   doc.setFillColor(79, 70, 229);
   doc.rect(margin, y, 170, 8, 'F');
   doc.setTextColor(255);
   doc.setFont("helvetica", "bold");
-  doc.text("Peça / Serviço", margin + 5, y + 5.5);
-  doc.text("Qtd", margin + 110, y + 5.5);
-  doc.text("Unit.", margin + 130, y + 5.5);
-  doc.text("Total", margin + 150, y + 5.5);
+  doc.text("ITEM / DESCRIÇÃO", margin + 5, y + 5.5);
+  doc.text("QTD", margin + 105, y + 5.5);
+  doc.text("UNIT. (R$)", margin + 125, y + 5.5);
+  doc.text("TOTAL (R$)", margin + 155, y + 5.5);
   
   y += 8;
   doc.setTextColor(0);
   doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
 
-  service.parts.forEach((part) => {
-    doc.text(part.name, margin + 5, y + 6);
-    doc.text(part.quantity.toString(), margin + 110, y + 6);
-    doc.text(`R$ ${part.unitPrice.toFixed(2)}`, margin + 130, y + 6);
-    doc.text(`R$ ${(part.quantity * part.unitPrice).toFixed(2)}`, margin + 150, y + 6);
+  // Render Parts
+  if (service.parts && service.parts.length > 0) {
+    service.parts.forEach((part) => {
+      checkPageBreak(10);
+      doc.text(part.name, margin + 5, y + 6);
+      doc.text(part.quantity.toString(), margin + 105, y + 6);
+      doc.text(part.unitPrice.toFixed(2), margin + 125, y + 6);
+      doc.text((part.quantity * part.unitPrice).toFixed(2), margin + 155, y + 6);
+      y += 8;
+      doc.setDrawColor(240);
+      doc.line(margin, y, margin + 170, y);
+    });
+  } else {
     y += 8;
-    doc.setDrawColor(230);
-    doc.line(margin, y, margin + 170, y);
-  });
+    doc.text("Nenhuma peça registrada.", margin + 5, y);
+    y += 4;
+  }
 
+  // Labor
+  checkPageBreak(15);
   if (service.laborCost > 0) {
     y += 2;
-    doc.text(service.laborDescription || "Mão de Obra", margin + 5, y + 6);
-    doc.text("-", margin + 110, y + 6);
-    doc.text("-", margin + 130, y + 6);
-    doc.text(`R$ ${Number(service.laborCost).toFixed(2)}`, margin + 150, y + 6);
+    doc.setFont("helvetica", "bold");
+    doc.text(service.laborDescription || "MÃO DE OBRA / SERVIÇOS", margin + 5, y + 6);
+    doc.text("-", margin + 105, y + 6);
+    doc.text("-", margin + 125, y + 6);
+    doc.text(Number(service.laborCost).toFixed(2), margin + 155, y + 6);
     y += 8;
     doc.line(margin, y, margin + 170, y);
   }
 
-  y += 5;
+  // Summary
+  y += 10;
+  checkPageBreak(30);
   const total = db.calculateTotal(service);
+  doc.setFillColor(245, 245, 245);
+  doc.rect(margin + 100, y, 70, 12, 'F');
   doc.setFontSize(14);
   doc.setFont("helvetica", "bold");
-  doc.text(`TOTAL: R$ ${total.toFixed(2)}`, margin + 110, y + 5);
+  doc.text(`TOTAL GERAL: R$ ${total.toFixed(2)}`, margin + 105, y + 8);
 
-  y += 15;
+  y += 20;
   doc.setFontSize(9);
   doc.setTextColor(100);
+  doc.setFont("helvetica", "normal");
   doc.text(`Garantia: ${service.warrantyInfo}`, margin, y);
 
+  // Signature
   if (service.clientSignature) {
-    y += 10;
-    doc.text("Assinado Digitalmente pelo Cliente:", margin, y);
+    y += 15;
+    checkPageBreak(40);
+    doc.setFont("helvetica", "bold");
+    doc.text("ASSINATURA DO CLIENTE (AUTORIZAÇÃO):", margin, y);
     y += 5;
-    doc.addImage(service.clientSignature, 'PNG', margin, y, 40, 20);
+    doc.addImage(service.clientSignature, 'PNG', margin, y, 60, 25);
+    y += 28;
+    doc.setFontSize(7);
+    doc.text("Documento assinado digitalmente via Oficina+ Gestão.", margin, y);
   }
 
-  doc.save(`OS-${service.carPlate}-${service.id.slice(0,4)}.pdf`);
+  doc.save(`OS-${service.carPlate.toUpperCase()}-${service.id.slice(0,4)}.pdf`);
 };
 
 const shareServiceWhatsApp = (service: ServiceRecord, settings: WorkshopSettings) => {
@@ -144,7 +193,7 @@ const shareServiceWhatsApp = (service: ServiceRecord, settings: WorkshopSettings
   
   const agendamento = service.scheduledDate ? `*Agendamento:* ${service.scheduledDate.split('-').reverse().join('/')} às ${service.scheduledTime || '--:--'}%0A` : '';
 
-  const message = `Olá *${service.ownerName}*, aqui está o resumo do serviço do seu *${service.carModel}* (${service.carPlate}).%0A%0A*Status:* ${service.status}%0A${agendamento}*KM:* ${service.carMileage}%0A*Total:* R$ ${total}%0A%0AAtenciosamente,%0A*${settings.name}*%0AContato: ${settings.phone}`;
+  const message = `Olá *${service.ownerName}*, aqui está o resumo do serviço do seu *${service.carModel}* (${service.carPlate.toUpperCase()}).%0A%0A*Status:* ${service.status}%0A${agendamento}*KM:* ${service.carMileage}%0A*Total:* R$ ${total}%0A%0AAtenciosamente,%0A*${settings.name}*%0AContato: ${settings.phone}`;
   
   window.open(`https://wa.me/${phone}?text=${message}`, '_blank');
 };
@@ -279,6 +328,10 @@ const ServiceForm: React.FC<{
     setTempPart({ id: '', name: '', quantity: 1, unitPrice: 0 });
   };
 
+  const removePart = (id: string) => {
+    setFormData(prev => ({ ...prev, parts: prev.parts.filter(p => p.id !== id) }));
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-24">
       <Header title={initialData ? "Editar" : "Novo"} onBack={onCancel} />
@@ -325,24 +378,34 @@ const ServiceForm: React.FC<{
         {step === 3 && (
           <div className="space-y-5 animate-enter">
             <h3 className="text-lg font-bold flex items-center gap-2"><DollarSign className="text-indigo-500" size={20}/> Orçamento</h3>
-            <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl border">
+            <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
               <Input placeholder="Peça" value={tempPart.name} onChange={e => setTempPart({...tempPart, name: e.target.value})} />
               <div className="grid grid-cols-2 gap-2 mt-2">
                 <Input type="number" placeholder="Qtd" value={tempPart.quantity} onChange={e => setTempPart({...tempPart, quantity: Number(e.target.value)})} />
-                <Input type="number" placeholder="R$" value={tempPart.unitPrice} onChange={e => setTempPart({...tempPart, unitPrice: Number(e.target.value)})} />
+                <Input type="number" placeholder="Unit. R$" value={tempPart.unitPrice} onChange={e => setTempPart({...tempPart, unitPrice: Number(e.target.value)})} />
               </div>
-              <Button onClick={addPart} fullWidth className="mt-2" size="sm">Adicionar Peça</Button>
+              <Button onClick={addPart} fullWidth className="mt-3" size="sm">Adicionar Peça</Button>
             </div>
-            {formData.parts.map((p, idx) => (
-              <div key={idx} className="flex justify-between p-3 bg-white dark:bg-slate-800 border rounded-xl text-sm">
-                <span>{p.quantity}x {p.name}</span>
-                <span className="font-bold">R$ {p.quantity * p.unitPrice}</span>
-              </div>
-            ))}
+            
+            <div className="space-y-3">
+              {formData.parts.map((p, idx) => (
+                <div key={idx} className="flex justify-between items-center p-4 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl text-sm shadow-sm">
+                  <div className="flex-1">
+                    <p className="font-bold text-slate-800 dark:text-slate-100">{p.name}</p>
+                    <p className="text-xs text-slate-400">{p.quantity} x R$ {p.unitPrice.toFixed(2)}</p>
+                  </div>
+                  <div className="text-right flex items-center gap-3">
+                    <span className="font-extrabold text-indigo-600">R$ {(p.quantity * p.unitPrice).toFixed(2)}</span>
+                    <button onClick={() => removePart(p.id)} className="p-2 text-red-400 hover:text-red-600"><Trash2 size={16}/></button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
             <Input label="Mão de Obra (R$)" type="number" value={formData.laborCost} onChange={e => handleChange('laborCost', Number(e.target.value))} />
-            <div className="bg-slate-900 text-white p-4 rounded-xl flex justify-between font-bold text-lg">
-              <span>Total</span>
-              <span>R$ {db.calculateTotal(formData).toFixed(2)}</span>
+            <div className="bg-indigo-600 text-white p-5 rounded-3xl flex justify-between items-center shadow-xl shadow-indigo-200 dark:shadow-none">
+              <span className="text-sm font-bold opacity-80">TOTAL DO SERVIÇO</span>
+              <span className="text-2xl font-black">R$ {db.calculateTotal(formData).toFixed(2)}</span>
             </div>
           </div>
         )}
@@ -370,13 +433,13 @@ const ServiceDetails: React.FC<{
   <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-24">
     <Header title={service.carModel} subtitle={service.carPlate.toUpperCase()} onBack={onBack} rightAction={<Button variant="ghost" size="sm" onClick={onEdit}>Editar</Button>} />
     <div className="p-5 space-y-6 animate-enter">
-      <div className={`p-6 rounded-3xl ${STATUS_COLORS[service.status]} flex flex-col items-center gap-2`}>
+      <div className={`p-6 rounded-3xl ${STATUS_COLORS[service.status]} flex flex-col items-center gap-2 shadow-sm`}>
         <h2 className="text-2xl font-extrabold">{service.status}</h2>
-        <p className="text-sm opacity-80">{service.entryDate}</p>
+        <p className="text-sm opacity-80">{service.entryDate.split('-').reverse().join('/')}</p>
       </div>
 
       {service.scheduledDate && (
-        <Card className="bg-indigo-50 border-indigo-200 dark:bg-indigo-900/20 dark:border-indigo-800">
+        <Card className="bg-indigo-50 border-indigo-100 dark:bg-indigo-900/20 dark:border-indigo-800">
            <div className="flex items-center gap-3 text-indigo-700 dark:text-indigo-300">
               <Calendar size={20} />
               <div>
@@ -389,23 +452,61 @@ const ServiceDetails: React.FC<{
 
       <Card className="space-y-4">
          <h3 className="font-bold flex items-center gap-2 text-indigo-600"><User size={18}/> Cliente e Veículo</h3>
-         <p className="text-sm font-medium">{service.ownerName} - {service.carMileage} km</p>
-         <p className="text-sm opacity-60">{service.ownerPhone}</p>
+         <div className="space-y-1">
+            <p className="text-sm font-bold text-slate-800 dark:text-slate-100">{service.ownerName}</p>
+            <p className="text-xs text-slate-400">{service.ownerPhone}</p>
+            <p className="text-xs bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded inline-block mt-1">{service.carMileage} km rodados</p>
+         </div>
       </Card>
+      
       <Card className="space-y-4">
          <h3 className="font-bold flex items-center gap-2 text-indigo-600"><Wrench size={18}/> Diagnóstico</h3>
-         <p className="text-sm">{service.description}</p>
-         {service.diagnosis && <p className="text-sm italic text-indigo-400">"{service.diagnosis}"</p>}
+         <div>
+           <p className="text-xs font-bold text-slate-400 uppercase mb-1">O QUE FOI RELATADO:</p>
+           <p className="text-sm text-slate-700 dark:text-slate-300">{service.description}</p>
+         </div>
+         {service.diagnosis && (
+           <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+             <p className="text-xs font-bold text-slate-400 uppercase mb-1">CONSTATADO PELA OFICINA:</p>
+             <p className="text-sm italic text-indigo-600 dark:text-indigo-400 font-medium">{service.diagnosis}</p>
+           </div>
+         )}
       </Card>
-      <div className="pt-3 flex justify-between items-center px-4">
-        <span className="font-bold">Total Geral</span>
-        <span className="text-xl font-extrabold text-indigo-600">R$ {db.calculateTotal(service).toFixed(2)}</span>
+
+      <div className="space-y-2">
+        <h3 className="font-bold text-slate-400 text-xs uppercase px-1">Resumo Financeiro</h3>
+        <Card className="divide-y divide-slate-100 dark:divide-slate-800 p-0 overflow-hidden">
+          {service.parts.map(p => (
+             <div key={p.id} className="flex justify-between items-center p-4">
+               <span className="text-sm text-slate-600 dark:text-slate-400">{p.quantity}x {p.name}</span>
+               <span className="text-sm font-bold">R$ {(p.quantity * p.unitPrice).toFixed(2)}</span>
+             </div>
+          ))}
+          {service.laborCost > 0 && (
+             <div className="flex justify-between items-center p-4 bg-slate-50/50 dark:bg-slate-800/20">
+               <span className="text-sm text-slate-600 dark:text-slate-400 font-medium">Mão de Obra</span>
+               <span className="text-sm font-bold">R$ {Number(service.laborCost).toFixed(2)}</span>
+             </div>
+          )}
+          <div className="flex justify-between items-center p-5 bg-indigo-50/30 dark:bg-indigo-900/10">
+            <span className="font-bold text-slate-800 dark:text-slate-100">Total</span>
+            <span className="text-xl font-black text-indigo-600">R$ {db.calculateTotal(service).toFixed(2)}</span>
+          </div>
+        </Card>
       </div>
-      {service.clientSignature && <Card><img src={service.clientSignature} className="w-full h-auto max-h-32 object-contain" /></Card>}
+
+      {service.clientSignature && (
+        <div className="space-y-2">
+          <h3 className="font-bold text-slate-400 text-xs uppercase px-1">Autorização Digital</h3>
+          <Card className="flex items-center justify-center p-2 bg-white">
+            <img src={service.clientSignature} className="w-full h-auto max-h-32 object-contain" />
+          </Card>
+        </div>
+      )}
     </div>
-    <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/90 dark:bg-slate-900/90 border-t flex gap-3">
-      <Button onClick={() => shareServiceWhatsApp(service, settings)} className="flex-1 bg-[#25D366] text-white"><MessageCircle size={20}/> Zap</Button>
-      <Button onClick={() => generateServicePDF(service, settings)} className="flex-1 bg-indigo-600 text-white"><FileDown size={20} /> PDF</Button>
+    <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/90 dark:bg-slate-900/90 border-t flex gap-3 shadow-2xl">
+      <Button onClick={() => shareServiceWhatsApp(service, settings)} className="flex-1 bg-[#25D366] text-white border-none"><MessageCircle size={20}/> WhatsApp</Button>
+      <Button onClick={() => generateServicePDF(service, settings)} className="flex-1 bg-indigo-600 text-white border-none"><FileDown size={20} /> Orçamento PDF</Button>
     </div>
   </div>
 );
@@ -422,10 +523,11 @@ const SettingsPanel: React.FC<{
       <div className="p-5 space-y-6 animate-enter">
          <Card className="space-y-4">
            <Input label="Nome da Oficina" value={localSettings.name} onChange={e => setLocalSettings({...localSettings, name: e.target.value})} />
-           <Input label="Telefone" value={localSettings.phone} onChange={e => setLocalSettings({...localSettings, phone: e.target.value})} />
-           <Input label="Endereço" value={localSettings.address} onChange={e => setLocalSettings({...localSettings, address: e.target.value})} />
+           <Input label="Telefone de Contato" value={localSettings.phone} onChange={e => setLocalSettings({...localSettings, phone: e.target.value})} />
+           <Input label="Endereço Completo" value={localSettings.address} onChange={e => setLocalSettings({...localSettings, address: e.target.value})} />
          </Card>
          <Button fullWidth onClick={() => onSave(localSettings)}>Salvar Alterações</Button>
+         <p className="text-center text-xs text-slate-400 px-10 leading-relaxed italic">Essas informações aparecerão no cabeçalho de todos os orçamentos em PDF gerados.</p>
       </div>
     </div>
   );
