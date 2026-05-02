@@ -37,7 +37,7 @@ const generateServicePDF = (service: ServiceRecord, settings: WorkshopSettings) 
   }
 
   doc.setFontSize(22);
-  doc.setTextColor(79, 70, 229);
+  doc.setTextColor(188, 19, 254); // Neon Purple
   doc.setFont("helvetica", "bold");
   doc.text(settings.name.toUpperCase(), margin, y);
   
@@ -48,7 +48,8 @@ const generateServicePDF = (service: ServiceRecord, settings: WorkshopSettings) 
   
   y += 6;
   doc.setFontSize(8);
-  doc.text(`Contato: ${settings.phone} | ${settings.address}`, margin, y);
+  const contactInfo = `Contato: ${settings.phone}${settings.cnpj ? ` | CNPJ: ${settings.cnpj}` : ''} | ${settings.address}`;
+  doc.text(contactInfo, margin, y);
 
   y += 10;
   doc.setDrawColor(200);
@@ -118,7 +119,7 @@ const generateServicePDF = (service: ServiceRecord, settings: WorkshopSettings) 
   y += 15;
 
   // Parts Table Header
-  doc.setFillColor(79, 70, 229);
+  doc.setFillColor(188, 19, 254); // Neon Purple instead of 79...
   doc.rect(margin, y, 170, 8, 'F');
   doc.setTextColor(255);
   doc.setFont("helvetica", "bold");
@@ -268,7 +269,7 @@ const Dashboard: React.FC<{
               <Settings size={20} />
             </button>
             <ThemeToggle />
-            <button onClick={onNew} className="bg-gradient-to-r from-indigo-600 to-violet-600 text-white p-3 rounded-2xl shadow-lg">
+            <button onClick={onNew} className="bg-gradient-to-r from-neon-blue to-neon-purple text-white p-3 rounded-2xl shadow-neon-blue animate-pulse">
               <Plus size={24} />
             </button>
           </div>
@@ -276,24 +277,36 @@ const Dashboard: React.FC<{
       />
       
       <div className="p-5 space-y-6">
+        {settings.logo && (
+          <div className="flex items-center gap-4 p-4 bg-white dark:bg-slate-900 rounded-[28px] shadow-sm ring-1 ring-slate-100 dark:ring-slate-800 animate-enter">
+            <div className="relative">
+              <img src={settings.logo} alt="Logo" className="w-14 h-14 object-contain rounded-2xl shadow-neon-blue border border-neon-blue/20" />
+              <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 border-2 border-white dark:border-slate-900 rounded-full animate-pulse"></div>
+            </div>
+            <div>
+              <h2 className="text-lg font-black text-slate-800 dark:text-slate-100 tracking-tight leading-tight">{settings.name}</h2>
+              <p className="text-[9px] font-bold text-neon-blue uppercase tracking-widest opacity-80">Oficina Digital Ativa</p>
+            </div>
+          </div>
+        )}
         <div className="relative group animate-enter">
           <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
-             <Search className="text-indigo-300 dark:text-indigo-400" size={20} />
+             <Search className="text-neon-blue" size={20} />
           </div>
           <input 
             type="text" 
             placeholder="Buscar placa, nome..." 
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-12 pr-4 py-4 bg-white dark:bg-slate-900 rounded-2xl border-none shadow-sm ring-1 ring-slate-100 dark:ring-slate-800 focus:ring-2 focus:ring-indigo-500 transition-all outline-none"
+            className="w-full pl-12 pr-4 py-4 bg-white dark:bg-slate-900 rounded-2xl border-none shadow-sm ring-1 ring-slate-100 dark:ring-slate-800 focus:ring-2 focus:ring-neon-blue transition-all outline-none"
           />
         </div>
 
         <div className="grid gap-4">
           {filtered.length === 0 && (
             <div className="py-20 text-center space-y-4 animate-enter">
-              <div className="w-20 h-20 bg-indigo-50 dark:bg-slate-900 rounded-full flex items-center justify-center mx-auto">
-                 <Car size={32} className="text-indigo-200" />
+              <div className="w-20 h-20 bg-neon-blue/10 dark:bg-slate-900 rounded-full flex items-center justify-center mx-auto">
+                 <Car size={32} className="text-neon-blue" />
               </div>
               <p className="text-slate-400 font-medium">Nenhum serviço encontrado.</p>
               <Button onClick={onNew} variant="outline" size="sm">Adicionar Primeiro</Button>
@@ -303,7 +316,7 @@ const Dashboard: React.FC<{
             const total = db.calculateTotal(service);
             const balance = total - (service.amountPaid || 0);
             return (
-              <Card key={service.id} onClick={() => onSelect(service.id)} className="border-l-[6px] border-l-indigo-500 animate-enter" style={{ animationDelay: `${index * 50}ms` }}>
+              <Card key={service.id} onClick={() => onSelect(service.id)} className="border-l-[6px] border-l-neon-blue animate-enter focus-within:shadow-neon-blue transition-all" style={{ animationDelay: `${index * 50}ms` }}>
                 <div className="flex justify-between items-start">
                   <div>
                     <h3 className="font-bold text-slate-800 dark:text-slate-100 text-lg">{service.carModel}</h3>
@@ -321,12 +334,12 @@ const Dashboard: React.FC<{
                 
                 <div className="flex justify-between items-end mt-4">
                   <div className="flex items-center gap-2">
-                     <div className="w-8 h-8 rounded-full bg-indigo-50 dark:bg-slate-800 flex items-center justify-center text-indigo-600 font-bold text-xs">{service.ownerName.charAt(0)}</div>
+                     <div className="w-8 h-8 rounded-full bg-neon-blue/10 dark:bg-slate-800 flex items-center justify-center text-neon-blue font-bold text-xs">{service.ownerName.charAt(0)}</div>
                      <p className="text-sm text-slate-600 dark:text-slate-400 font-medium">{service.ownerName.split(' ')[0]}</p>
                   </div>
                   <div className="text-right">
                     <p className="text-xs text-slate-400 font-medium">Total Geral</p>
-                    <p className="text-lg font-extrabold text-indigo-600 dark:text-indigo-400">R$ {total.toFixed(2)}</p>
+                    <p className="text-lg font-extrabold text-neon-purple dark:text-neon-blue">R$ {total.toFixed(2)}</p>
                   </div>
                 </div>
               </Card>
@@ -677,6 +690,7 @@ const SettingsPanel: React.FC<{
            </div>
            
            <Input label="Nome da Oficina" value={localSettings.name} onChange={e => setLocalSettings({...localSettings, name: e.target.value})} />
+           <Input label="CNPJ" value={localSettings.cnpj || ''} onChange={e => setLocalSettings({...localSettings, cnpj: e.target.value})} />
            <Input label="Telefone de Contato" value={localSettings.phone} onChange={e => setLocalSettings({...localSettings, phone: e.target.value})} />
            <Input label="Endereço Completo" value={localSettings.address} onChange={e => setLocalSettings({...localSettings, address: e.target.value})} />
          </Card>
@@ -731,22 +745,22 @@ const AgendaView: React.FC<{
       <div className="p-5 space-y-6">
         <div className="relative group animate-enter">
           <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
-             <Search className="text-indigo-300 dark:text-indigo-400" size={20} />
+             <Search className="text-neon-blue" size={20} />
           </div>
           <input 
             type="text" 
             placeholder="Buscar na agenda..." 
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-12 pr-4 py-4 bg-white dark:bg-slate-900 rounded-2xl border-none shadow-sm ring-1 ring-slate-100 dark:ring-slate-800 focus:ring-2 focus:ring-indigo-500 transition-all outline-none"
+            className="w-full pl-12 pr-4 py-4 bg-white dark:bg-slate-900 rounded-2xl border-none shadow-sm ring-1 ring-slate-100 dark:ring-slate-800 focus:ring-2 focus:ring-neon-blue transition-all outline-none"
           />
         </div>
 
         <div className="space-y-8">
           {dates.length === 0 && (
             <div className="py-20 text-center space-y-4 animate-enter">
-              <div className="w-20 h-20 bg-indigo-50 dark:bg-slate-900 rounded-full flex items-center justify-center mx-auto">
-                 <Calendar size={32} className="text-indigo-200" />
+              <div className="w-20 h-20 bg-neon-blue/10 dark:bg-slate-900 rounded-full flex items-center justify-center mx-auto">
+                 <Calendar size={32} className="text-neon-blue" />
               </div>
               <p className="text-slate-400 font-medium">Nenhum compromisso encontrado.</p>
               <Button onClick={onNew} variant="outline" size="sm">Agendar Serviço</Button>
@@ -756,7 +770,7 @@ const AgendaView: React.FC<{
           {dates.map((date, dateIdx) => (
             <div key={date} className="animate-enter" style={{ animationDelay: `${dateIdx * 100}ms` }}>
               <div className="flex items-center gap-2 mb-4 sticky top-20 bg-slate-50/80 dark:bg-slate-950/80 backdrop-blur-sm py-2 z-10">
-                <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
+                <span className="w-2 h-2 rounded-full bg-neon-purple shadow-neon-purple animate-pulse"></span>
                 <h3 className="font-bold text-slate-800 dark:text-slate-100 uppercase tracking-widest text-xs">
                   {date.split('-').reverse().join('/')}
                 </h3>
@@ -767,7 +781,7 @@ const AgendaView: React.FC<{
                   <Card key={service.id} onClick={() => onSelect(service.id)} className="p-4 relative overflow-hidden group">
                     <div className="flex justify-between items-center">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 group-hover:bg-indigo-600 group-hover:text-white transition-all">
+                        <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 group-hover:bg-neon-purple group-hover:text-white transition-all shadow-sm group-hover:shadow-neon-purple">
                           {service.scheduledTime ? <Clock size={20} /> : <Wrench size={20} />}
                         </div>
                         <div>
@@ -777,7 +791,7 @@ const AgendaView: React.FC<{
                       </div>
                       <div className="text-right">
                         {service.scheduledTime && (
-                           <p className="text-indigo-600 dark:text-indigo-400 font-black text-sm mb-1">{service.scheduledTime}</p>
+                           <p className="text-neon-purple dark:text-neon-blue font-black text-sm mb-1">{service.scheduledTime}</p>
                         )}
                         <span className={`text-[9px] font-bold px-2 py-1 rounded-md ${STATUS_BADGE_STYLES[service.status]}`}>{service.status}</span>
                       </div>
@@ -864,7 +878,7 @@ const CRMView: React.FC<{
         rightAction={
           <button 
             onClick={() => { setEditingLead(null); setFormData({ name: '', phone: '', vehicle: '', interest: '', status: LeadStatus.NEW, notes: '' }); setShowForm(true); }}
-            className="bg-indigo-600 text-white p-2.5 rounded-xl shadow-lg"
+            className="bg-neon-blue text-white p-2.5 rounded-xl shadow-neon-blue"
           >
             <Plus size={20} />
           </button>
@@ -905,7 +919,7 @@ const CRMView: React.FC<{
                       <MessageCircle size={10} /> {lead.phone}
                     </p>
                     {lead.vehicle && (
-                      <p className="text-[10px] text-indigo-500 font-bold uppercase flex items-center gap-1">
+                      <p className="text-[10px] text-neon-blue font-bold uppercase flex items-center gap-1">
                         <Car size={10} /> {lead.vehicle}
                       </p>
                     )}
@@ -1021,14 +1035,14 @@ const ClientsView: React.FC<{
       <div className="p-5 space-y-6">
         <div className="relative group animate-enter">
           <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
-             <Search className="text-indigo-300 dark:text-indigo-400" size={20} />
+             <Search className="text-neon-blue" size={20} />
           </div>
           <input 
             type="text" 
             placeholder="Buscar por nome ou telefone..." 
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-12 pr-4 py-4 bg-white dark:bg-slate-900 rounded-2xl border-none shadow-sm ring-1 ring-slate-100 dark:ring-slate-800 focus:ring-2 focus:ring-indigo-500 transition-all outline-none"
+            className="w-full pl-12 pr-4 py-4 bg-white dark:bg-slate-900 rounded-2xl border-none shadow-sm ring-1 ring-slate-100 dark:ring-slate-800 focus:ring-2 focus:ring-neon-blue transition-all outline-none"
           />
         </div>
 
@@ -1043,7 +1057,7 @@ const ClientsView: React.FC<{
               <Card key={idx} className="p-5 animate-enter" style={{ animationDelay: `${idx * 50}ms` }}>
                 <div className="flex justify-between items-start mb-4">
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                    <div className="w-12 h-12 rounded-2xl bg-neon-blue/10 dark:bg-neon-blue/20 flex items-center justify-center text-neon-blue">
                       <User size={24} />
                     </div>
                     <div>
@@ -1054,7 +1068,7 @@ const ClientsView: React.FC<{
                     </div>
                   </div>
                   <div className="text-right">
-                    <span className="text-[10px] font-black bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 px-2 py-1 rounded-full uppercase">
+                    <span className="text-[10px] font-black bg-neon-purple/10 dark:bg-neon-purple/40 text-neon-purple dark:text-neon-blue px-2 py-1 rounded-full uppercase">
                       {client.services.length} {client.services.length === 1 ? 'Serviço' : 'Serviços'}
                     </span>
                     <p className="text-[10px] text-slate-400 mt-1 uppercase font-bold tracking-tighter">Último: {client.lastVisit.split('-').reverse().join('/')}</p>
@@ -1076,7 +1090,7 @@ const ClientsView: React.FC<{
                   onClick={() => {
                     onSelectService(client.services[client.services.length - 1].id);
                   }}
-                  className="w-full mt-4 py-2 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-xl transition-all"
+                  className="w-full mt-4 py-2 text-xs font-bold text-neon-blue dark:text-neon-blue hover:bg-neon-blue/10 rounded-xl transition-all"
                 >
                   Ver Último Serviço
                 </button>
@@ -1210,35 +1224,35 @@ const App: React.FC = () => {
         <div className="fixed bottom-0 left-0 right-0 max-w-md mx-auto p-4 flex justify-around bg-white/90 dark:bg-slate-950/90 backdrop-blur-xl border-t border-slate-100 dark:border-slate-800 z-50">
           <button 
             onClick={() => setView('DASHBOARD')}
-            className={`flex flex-col items-center gap-1 transition-all ${view === 'DASHBOARD' ? 'text-indigo-600 scale-110' : 'text-slate-400 opacity-60'}`}
+            className={`flex flex-col items-center gap-1 transition-all ${view === 'DASHBOARD' ? 'text-neon-blue scale-110' : 'text-slate-400 opacity-60'}`}
           >
-            <Wrench size={22} className={view === 'DASHBOARD' ? 'fill-indigo-600/10' : ''} />
+            <Wrench size={22} className={view === 'DASHBOARD' ? 'fill-neon-blue/10' : ''} />
             <span className="text-[10px] font-bold">Serviços</span>
           </button>
           
           <button 
             onClick={() => setView('AGENDA')}
-            className={`flex flex-col items-center gap-1 transition-all ${view === 'AGENDA' ? 'text-indigo-600 scale-110' : 'text-slate-400 opacity-60'}`}
+            className={`flex flex-col items-center gap-1 transition-all ${view === 'AGENDA' ? 'text-neon-blue scale-110' : 'text-slate-400 opacity-60'}`}
           >
-            <Calendar size={22} className={view === 'AGENDA' ? 'fill-indigo-600/10' : ''} />
+            <Calendar size={22} className={view === 'AGENDA' ? 'fill-neon-blue/10' : ''} />
             <span className="text-[10px] font-bold">Agenda</span>
           </button>
 
           <button 
             onClick={() => setView('CRM')}
-            className={`flex flex-col items-center gap-1 transition-all ${view === 'CRM' ? 'text-indigo-600 scale-110' : 'text-slate-400 opacity-60'}`}
+            className={`flex flex-col items-center gap-1 transition-all ${view === 'CRM' ? 'text-neon-blue scale-110' : 'text-slate-400 opacity-60'}`}
           >
             <div className="relative">
-              <Users size={22} className={view === 'CRM' ? 'fill-indigo-600/10' : ''} />
+              <Users size={22} className={view === 'CRM' ? 'fill-neon-blue/10' : ''} />
             </div>
             <span className="text-[10px] font-bold">CRM</span>
           </button>
 
           <button 
             onClick={() => setView('CLIENTS')}
-            className={`flex flex-col items-center gap-1 transition-all ${view === 'CLIENTS' ? 'text-indigo-600 scale-110' : 'text-slate-400 opacity-60'}`}
+            className={`flex flex-col items-center gap-1 transition-all ${view === 'CLIENTS' ? 'text-neon-blue scale-110' : 'text-slate-400 opacity-60'}`}
           >
-            <Contact size={22} className={view === 'CLIENTS' ? 'fill-indigo-600/10' : ''} />
+            <Contact size={22} className={view === 'CLIENTS' ? 'fill-neon-blue/10' : ''} />
             <span className="text-[10px] font-bold">Clientes</span>
           </button>
           

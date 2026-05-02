@@ -20,6 +20,7 @@ export interface WorkshopSettings {
   name: string;
   phone: string;
   address: string;
+  cnpj?: string;
   logo?: string;
 }
 
