@@ -1,4 +1,4 @@
-const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+const BASE_URL = (window as any).__API_URL__ || import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 function getToken(): string | null {
   return localStorage.getItem("token");
