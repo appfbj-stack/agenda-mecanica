@@ -2,7 +2,7 @@
 FROM node:20-alpine AS build
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci
+RUN npm install
 COPY . .
 # VITE_API_URL ainda pode ser passado no build (fallback),
 # mas em produção a URL real é injetada em runtime via API_URL
