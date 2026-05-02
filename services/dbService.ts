@@ -1,10 +1,11 @@
 
-import { ServiceRecord, WorkshopSettings } from '../types';
+import { ServiceRecord, WorkshopSettings, CRMLead } from '../types';
 
 const DB_NAME = 'OficinaPlusDB';
-const DB_VERSION = 1;
+const DB_VERSION = 3; // Incrementing version for the new store
 const STORE_SERVICES = 'services';
 const STORE_SETTINGS = 'settings';
+const STORE_LEADS = 'leads';
 
 const openDB = (): Promise<IDBDatabase> => {
   return new Promise((resolve, reject) => {
@@ -21,6 +22,9 @@ const openDB = (): Promise<IDBDatabase> => {
         }
         if (!db.objectStoreNames.contains(STORE_SETTINGS)) {
           db.createObjectStore(STORE_SETTINGS, { keyPath: 'key' });
+        }
+        if (!db.objectStoreNames.contains(STORE_LEADS)) {
+          db.createObjectStore(STORE_LEADS, { keyPath: 'id' });
         }
       };
     } catch (e) {
@@ -59,6 +63,44 @@ export const deleteService = async (id: string): Promise<void> => {
   return new Promise((resolve, reject) => {
     const transaction = db.transaction(STORE_SERVICES, 'readwrite');
     const store = transaction.objectStore(STORE_SERVICES);
+    const request = store.delete(id);
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error);
+  });
+};
+
+// --- Leads CRM ---
+
+export const getLeads = async (): Promise<CRMLead[]> => {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORE_LEADS, 'readonly');
+    const store = transaction.objectStore(STORE_LEADS);
+    const request = store.getAll();
+    request.onsuccess = () => {
+      const results = request.result as CRMLead[];
+      resolve(results.sort((a, b) => b.createdAt - a.createdAt));
+    };
+    request.onerror = () => reject(request.error);
+  });
+};
+
+export const saveLead = async (lead: CRMLead): Promise<void> => {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORE_LEADS, 'readwrite');
+    const store = transaction.objectStore(STORE_LEADS);
+    const request = store.put(lead);
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error);
+  });
+};
+
+export const deleteLead = async (id: string): Promise<void> => {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORE_LEADS, 'readwrite');
+    const store = transaction.objectStore(STORE_LEADS);
     const request = store.delete(id);
     request.onsuccess = () => resolve();
     request.onerror = () => reject(request.error);

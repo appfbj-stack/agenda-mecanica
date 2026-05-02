@@ -1,5 +1,6 @@
 {
   "name": "Oficina Digital",
   "description": "Sistema de gestão para oficinas mecânicas com assinatura digital.",
-  "requestFramePermissions": []
+  "requestFramePermissions": [],
+  "majorCapabilities": []
 }

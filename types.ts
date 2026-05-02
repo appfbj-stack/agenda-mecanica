@@ -20,6 +20,7 @@ export interface WorkshopSettings {
   name: string;
   phone: string;
   address: string;
+  logo?: string;
 }
 
 export interface ServiceRecord {
@@ -53,4 +54,24 @@ export interface ServiceRecord {
   updatedAt: number;
 }
 
-export type ViewState = 'DASHBOARD' | 'CREATE_EDIT' | 'DETAILS' | 'SETTINGS';
+export enum LeadStatus {
+  NEW = 'Novo Contato',
+  NEGOTIATING = 'Em Negociação',
+  FOLLOW_UP = 'Retorno',
+  LOST = 'Perdido',
+  CONVERTED = 'Convertido'
+}
+
+export interface CRMLead {
+  id: string;
+  name: string;
+  phone: string;
+  vehicle?: string;
+  interest?: string;
+  status: LeadStatus;
+  notes?: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export type ViewState = 'DASHBOARD' | 'CREATE_EDIT' | 'DETAILS' | 'SETTINGS' | 'AGENDA' | 'CRM' | 'CLIENTS';

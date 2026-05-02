@@ -91,7 +91,13 @@ export const Card: React.FC<{ children: React.ReactNode; className?: string; onC
 };
 
 // --- Header ---
-export const Header: React.FC<{ title: string; subtitle?: string; rightAction?: React.ReactNode; onBack?: () => void }> = ({ title, subtitle, rightAction, onBack }) => (
+export const Header: React.FC<{ 
+  title: string; 
+  subtitle?: string; 
+  rightAction?: React.ReactNode; 
+  onBack?: () => void;
+  logo?: string;
+}> = ({ title, subtitle, rightAction, onBack, logo }) => (
   <header className="bg-white/80 dark:bg-slate-950/80 backdrop-blur-md border-b border-slate-100 dark:border-slate-800/50 sticky top-0 z-20 px-5 py-4 flex items-center justify-between shadow-sm transition-all">
     <div className="flex items-center gap-3">
       {onBack && (
@@ -99,9 +105,12 @@ export const Header: React.FC<{ title: string; subtitle?: string; rightAction?: 
            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
         </button>
       )}
-      <div>
-        <h1 className="text-xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-violet-600 dark:from-indigo-400 dark:to-violet-400 leading-tight">{title}</h1>
-        {subtitle && <p className="text-xs font-medium text-slate-400 dark:text-slate-500 mt-0.5">{subtitle}</p>}
+      <div className="flex items-center gap-3">
+        {logo && <img src={logo} alt="Logo" className="w-10 h-10 object-contain rounded-lg" />}
+        <div>
+          <h1 className="text-xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-violet-600 dark:from-indigo-400 dark:to-violet-400 leading-tight">{title}</h1>
+          {subtitle && <p className="text-xs font-medium text-slate-400 dark:text-slate-500 mt-0.5">{subtitle}</p>}
+        </div>
       </div>
     </div>
     {rightAction && <div className="animate-enter flex items-center gap-2">{rightAction}</div>}
