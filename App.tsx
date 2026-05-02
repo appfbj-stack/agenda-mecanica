@@ -1121,7 +1121,7 @@ const ThemeToggle: React.FC = () => {
 
 // --- App Component ---
 
-const App: React.FC = () => {
+const App: React.FC<{ onLogout?: () => void }> = ({ onLogout }) => {
   const [view, setView] = useState<ViewState>('DASHBOARD');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [settings, setSettings] = useState<WorkshopSettings | null>(null);
@@ -1263,6 +1263,16 @@ const App: React.FC = () => {
             <Settings size={22} />
             <span className="text-[10px] font-bold">Ajustes</span>
           </button>
+
+          {onLogout && (
+            <button
+              onClick={() => { if (confirm('Sair da conta?')) onLogout(); }}
+              className="flex flex-col items-center gap-1 text-slate-400 opacity-60 hover:opacity-100 hover:text-red-400 transition-all"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+              <span className="text-[10px] font-bold">Sair</span>
+            </button>
+          )}
         </div>
       )}
     </div>
