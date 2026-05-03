@@ -184,55 +184,6 @@ def create_order(payload: ServiceOrderCreate, db: Session = Depends(get_db), cu:
     db.refresh(o)
     return o
 
-
-@router.get("/service-orders/{oid}", response_model=ServiceOrderOut)
-def get_order(oid: int, db: Session = Depends(get_db), cu: User = Depends(get_current_user)):
-    o = db.query(ServiceOrder).filter(ServiceOrder.id == oid, ServiceOrder.tenant_id == cu.tenant_id).first()
-    if not o:
-        raise HTTPException(404, "Ordem de serviço não encontrada")
-    return o
-
-
-@router.put("/service-orders/{oid}", response_model=ServiceOrderOut)
-def update_order(oid: int, payload: ServiceOrderUpdate, db: Session = Depends(get_db), cu: User = Depends(get_current_user)):
-    o = db.query(ServiceOrder).filter(ServiceOrder.id == oid, ServiceOrder.tenant_id == cu.tenant_id).first()
-    if not o:
-        raise HTTPException(404, "Ordem de serviço não encontrada")
-    for field, value in payload.model_dump(exclude_unset=True).items():
-        setattr(o, field, value)
-    db.commit()
-    db.refresh(o)
-    return o
-
-
-@router.patch("/service-orders/{oid}/status", response_model=ServiceOrderOut)
-def update_order_status(
-    oid: int,
-    new_status: str,
-    db: Session = Depends(get_db),
-    cu: User = Depends(get_current_user),
-):
-    valid = {"em_analise", "aguardando_aprovacao", "em_execucao", "pronto", "concluido"}
-    if new_status not in valid:
-        raise HTTPException(422, f"Status inválido. Use: {', '.join(valid)}")
-    o = db.query(ServiceOrder).filter(ServiceOrder.id == oid, ServiceOrder.tenant_id == cu.tenant_id).first()
-    if not o:
-        raise HTTPException(404, "Ordem de serviço não encontrada")
-    o.status = new_status
-    db.commit()
-    db.refresh(o)
-    return o
-
-
-@router.delete("/service-orders/{oid}", status_code=204)
-def delete_order(oid: int, db: Session = Depends(get_db), cu: User = Depends(get_current_user)):
-    o = db.query(ServiceOrder).filter(ServiceOrder.id == oid, ServiceOrder.tenant_id == cu.tenant_id).first()
-    if not o:
-        raise HTTPException(404, "Ordem de serviço não encontrada")
-    db.delete(o)
-    db.commit()
-
-
 # ── Flat Service Orders (formato compatível com o frontend PWA) ───────────────
 
 import json as _json
@@ -407,3 +358,52 @@ def upsert_order_flat(
     db.commit()
     db.refresh(order)
     return _order_to_flat(order, db)
+
+
+@router.get("/service-orders/{oid}", response_model=ServiceOrderOut)
+def get_order(oid: int, db: Session = Depends(get_db), cu: User = Depends(get_current_user)):
+    o = db.query(ServiceOrder).filter(ServiceOrder.id == oid, ServiceOrder.tenant_id == cu.tenant_id).first()
+    if not o:
+        raise HTTPException(404, "Ordem de serviço não encontrada")
+    return o
+
+
+@router.put("/service-orders/{oid}", response_model=ServiceOrderOut)
+def update_order(oid: int, payload: ServiceOrderUpdate, db: Session = Depends(get_db), cu: User = Depends(get_current_user)):
+    o = db.query(ServiceOrder).filter(ServiceOrder.id == oid, ServiceOrder.tenant_id == cu.tenant_id).first()
+    if not o:
+        raise HTTPException(404, "Ordem de serviço não encontrada")
+    for field, value in payload.model_dump(exclude_unset=True).items():
+        setattr(o, field, value)
+    db.commit()
+    db.refresh(o)
+    return o
+
+
+@router.patch("/service-orders/{oid}/status", response_model=ServiceOrderOut)
+def update_order_status(
+    oid: int,
+    new_status: str,
+    db: Session = Depends(get_db),
+    cu: User = Depends(get_current_user),
+):
+    valid = {"em_analise", "aguardando_aprovacao", "em_execucao", "pronto", "concluido"}
+    if new_status not in valid:
+        raise HTTPException(422, f"Status inválido. Use: {', '.join(valid)}")
+    o = db.query(ServiceOrder).filter(ServiceOrder.id == oid, ServiceOrder.tenant_id == cu.tenant_id).first()
+    if not o:
+        raise HTTPException(404, "Ordem de serviço não encontrada")
+    o.status = new_status
+    db.commit()
+    db.refresh(o)
+    return o
+
+
+@router.delete("/service-orders/{oid}", status_code=204)
+def delete_order(oid: int, db: Session = Depends(get_db), cu: User = Depends(get_current_user)):
+    o = db.query(ServiceOrder).filter(ServiceOrder.id == oid, ServiceOrder.tenant_id == cu.tenant_id).first()
+    if not o:
+        raise HTTPException(404, "Ordem de serviço não encontrada")
+    db.delete(o)
+    db.commit()
+
