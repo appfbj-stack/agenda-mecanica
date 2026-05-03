@@ -179,3 +179,4 @@ export const hermesChat = (message: string, history: HermesMessage[]) =>
     method: "POST",
     body: JSON.stringify({ message, history }),
   });
+export const getMe = authMe;

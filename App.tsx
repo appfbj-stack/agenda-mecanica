@@ -1,12 +1,12 @@
 
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Car, User, Wrench, DollarSign, AlertCircle, Moon, Sun, FileDown, MessageCircle, Share2, Settings, PenTool, Calendar, Clock, Loader2, Trash2, CreditCard, Banknote, Landmark, AlertTriangle, Image as ImageIcon, Upload, X, Users, LayoutDashboard, Contact, Bot, Send } from 'lucide-react';
+import { Plus, Search, Car, User, Wrench, DollarSign, AlertCircle, Moon, Sun, FileDown, MessageCircle, Share2, Settings, PenTool, Calendar, Clock, Loader2, Trash2, CreditCard, Banknote, Landmark, AlertTriangle, Image as ImageIcon, Upload, X, Users, LayoutDashboard, Contact, Bot, Send, Shield, ToggleLeft, ToggleRight } from 'lucide-react';
 import { jsPDF } from "jspdf";
 import { ServiceRecord, ServiceStatus, ViewState, Part, WorkshopSettings, PaymentMethod, CRMLead, LeadStatus } from './types';
 import { Button, Input, Card, Header, TextArea } from './components/UI';
 import { SignaturePad } from './components/SignaturePad';
 import * as db from './services/dbService';
-import { getMyModules, hermesChat, HermesMessage, ModulesMap } from './src/api';
+import { getMyModules, hermesChat, HermesMessage, ModulesMap, adminListTenants, adminToggleModule, getMe, UserOut } from './src/api';
 import { STATUS_BADGE_STYLES, STATUS_COLORS } from './constants';
 
 // --- Global Helper Functions ---
@@ -1207,6 +1207,117 @@ const HermesView: React.FC<{ settings: WorkshopSettings; onBack: () => void }> =
   );
 };
 
+
+// ── AdminView: Gerenciar módulos por tenant (apenas super_admin) ──────────────
+const MODULE_LABELS: Record<string, string> = {
+  crm: 'CRM', agenda: 'Agenda', kanban: 'Kanban', whatsapp: 'WhatsApp',
+  followup: 'Follow-up', hermes: 'Hermes IA', instagram: 'Instagram', youtube: 'YouTube',
+};
+
+interface TenantWithModules {
+  id: number; name: string; slug: string; active: boolean;
+  modules: ModulesMap;
+}
+
+const AdminView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
+  const [tenants, setTenants] = useState<TenantWithModules[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState<string | null>(null);
+  const [msg, setMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    adminListTenants()
+      .then(data => setTenants((data as TenantWithModules[]).filter(t => t.id !== 0)))
+      .catch(() => setMsg('Erro ao carregar tenants.'))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const toggle = async (tenantId: number, mod: string, cur: boolean) => {
+    const key = `${tenantId}-${mod}`;
+    setSaving(key);
+    try {
+      const updated = await adminToggleModule(tenantId, mod, !cur);
+      setTenants(prev => prev.map(t =>
+        t.id === tenantId ? { ...t, modules: updated as ModulesMap } : t
+      ));
+      setMsg(`${MODULE_LABELS[mod] || mod} ${!cur ? 'ativado' : 'desativado'} para tenant.`);
+      setTimeout(() => setMsg(null), 3000);
+    } catch {
+      setMsg('Erro ao atualizar módulo.');
+    } finally {
+      setSaving(null);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-8">
+      <div className="sticky top-0 z-10 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 py-3 flex items-center gap-3">
+        <button onClick={onBack} className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+        </button>
+        <Shield size={20} className="text-indigo-500" />
+        <div>
+          <h1 className="font-bold text-slate-800 dark:text-white text-base">Admin Master</h1>
+          <p className="text-xs text-slate-500">Módulos por cliente</p>
+        </div>
+      </div>
+
+      {msg && (
+        <div className="mx-4 mt-4 p-3 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-700 rounded-xl text-indigo-700 dark:text-indigo-300 text-sm">
+          {msg}
+        </div>
+      )}
+
+      <div className="px-4 mt-4 space-y-4">
+        {loading ? (
+          <div className="flex justify-center py-12"><Loader2 size={28} className="animate-spin text-indigo-400" /></div>
+        ) : tenants.length === 0 ? (
+          <div className="text-center py-12 text-slate-500 text-sm">Nenhum cliente cadastrado ainda.</div>
+        ) : (
+          tenants.map(tenant => (
+            <div key={tenant.id} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
+              <div className="px-4 py-3 bg-slate-50 dark:bg-slate-800 flex items-center justify-between">
+                <div>
+                  <p className="font-semibold text-slate-800 dark:text-white text-sm">{tenant.name}</p>
+                  <p className="text-xs text-slate-500">{tenant.slug}</p>
+                </div>
+                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${tenant.active ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400' : 'bg-red-100 text-red-700'}`}>
+                  {tenant.active ? 'ativo' : 'inativo'}
+                </span>
+              </div>
+              <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                {Object.keys(MODULE_LABELS).map(mod => {
+                  const enabled = tenant.modules?.[mod as keyof ModulesMap] ?? false;
+                  const key = `${tenant.id}-${mod}`;
+                  const isSaving = saving === key;
+                  return (
+                    <div key={mod} className="flex items-center justify-between px-4 py-2.5">
+                      <span className="text-sm text-slate-700 dark:text-slate-300">{MODULE_LABELS[mod]}</span>
+                      <button
+                        onClick={() => toggle(tenant.id, mod, enabled)}
+                        disabled={!!saving}
+                        className="transition-all"
+                      >
+                        {isSaving ? (
+                          <Loader2 size={22} className="animate-spin text-slate-400" />
+                        ) : enabled ? (
+                          <ToggleRight size={28} className="text-indigo-500" />
+                        ) : (
+                          <ToggleLeft size={28} className="text-slate-300 dark:text-slate-600" />
+                        )}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+};
+
 const App: React.FC<{ onLogout?: () => void }> = ({ onLogout }) => {
   const [view, setView] = useState<ViewState>('DASHBOARD');
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -1214,12 +1325,14 @@ const App: React.FC<{ onLogout?: () => void }> = ({ onLogout }) => {
   const [services, setServices] = useState<ServiceRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [modules, setModules] = useState<ModulesMap | null>(null);
+  const [me, setMe] = useState<UserOut | null>(null);
 
   useEffect(() => {
     const init = async () => {
       try {
         setIsLoading(true);
-        const [s, mods] = await Promise.all([db.getSettings(), getMyModules().catch(() => null)]);
+        const [s, mods, currentUser] = await Promise.all([db.getSettings(), getMyModules().catch(() => null), getMe().catch(() => null)]);
+        if (currentUser) setMe(currentUser);
         setSettings(s);
         if (mods) setModules(mods);
         try {
@@ -1312,6 +1425,10 @@ const App: React.FC<{ onLogout?: () => void }> = ({ onLogout }) => {
         />
       )}
 
+      {view === 'ADMIN' && (
+        <AdminView onBack={() => setView('DASHBOARD')} />
+      )}
+
       {view === 'HERMES' && settings && (
         <HermesView
           settings={settings}
@@ -1320,7 +1437,7 @@ const App: React.FC<{ onLogout?: () => void }> = ({ onLogout }) => {
       )}
 
       {/* Bottom Navigation */}
-      {(view === 'DASHBOARD' || view === 'AGENDA' || view === 'CRM' || view === 'CLIENTS' || view === 'HERMES') && (
+      {(view === 'DASHBOARD' || view === 'AGENDA' || view === 'CRM' || view === 'CLIENTS' || view === 'HERMES' || view === 'ADMIN') && (
         <div className="fixed bottom-0 left-0 right-0 max-w-md mx-auto p-4 flex justify-around bg-white/90 dark:bg-slate-950/90 backdrop-blur-xl border-t border-slate-100 dark:border-slate-800 z-50">
           <button 
             onClick={() => setView('DASHBOARD')}
@@ -1364,6 +1481,15 @@ const App: React.FC<{ onLogout?: () => void }> = ({ onLogout }) => {
             >
               <Bot size={22} className={view === 'HERMES' ? 'fill-neon-blue/10' : ''} />
               <span className="text-[10px] font-bold">Hermes</span>
+            </button>
+          )}
+          {me?.role === 'super_admin' && (
+            <button
+              onClick={() => setView('ADMIN')}
+              className={`flex flex-col items-center gap-1 transition-all ${view === 'ADMIN' ? 'text-indigo-500 scale-110' : 'text-slate-400 opacity-60 hover:opacity-100'}`}
+            >
+              <Shield size={22} />
+              <span className="text-[10px] font-bold">Admin</span>
             </button>
           )}
           <button 
