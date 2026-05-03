@@ -1,6 +1,6 @@
 #!/bin/sh
 # Substitui a URL da API no config.js e no nginx.conf em runtime
-API_URL="${API_URL:-http://localhost:8000}"
+API_URL="${API_URL:-https://api.oficinadavid.fbautomacao.space}"
 
 # 1. Injeta no config.js para o frontend JS
 cat > /usr/share/nginx/html/config.js << JSEOF
