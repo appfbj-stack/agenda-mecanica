@@ -1437,7 +1437,7 @@ const App: React.FC<{ onLogout?: () => void }> = ({ onLogout }) => {
       )}
 
       {/* Bottom Navigation */}
-      {(view === 'DASHBOARD' || view === 'AGENDA' || view === 'CRM' || view === 'CLIENTS' || view === 'HERMES' || view === 'ADMIN') && (
+      {(view === 'DASHBOARD' || view === 'AGENDA' || view === 'CRM' || view === 'CLIENTS' || view === 'ADMIN') && (
         <div className="fixed bottom-0 left-0 right-0 max-w-md mx-auto p-4 flex justify-around bg-white/90 dark:bg-slate-950/90 backdrop-blur-xl border-t border-slate-100 dark:border-slate-800 z-50">
           <button 
             onClick={() => setView('DASHBOARD')}
