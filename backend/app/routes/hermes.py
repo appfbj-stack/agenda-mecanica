@@ -1,4 +1,4 @@
-"""Módulo Hermes — chat com IA (opcional por tenant)."""
+"""Módulo Hermes — chat com IA personalizado por tenant."""
 import logging
 from typing import Optional
 
@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.database import get_db
 from app.deps import require_module
-from app.models import User
+from app.models import User, WorkshopSettings
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +42,7 @@ async def _hermes_chat_request(message: str) -> str:
     global _hermes_token
     url = settings.HERMES_API_URL.rstrip("/")
 
-    for attempt in range(2):          # tenta 2x: normal + após re-login
+    for attempt in range(2):
         token = await _get_hermes_token()
         async with httpx.AsyncClient(timeout=45.0) as client:
             resp = await client.post(
@@ -52,7 +52,6 @@ async def _hermes_chat_request(message: str) -> str:
             )
 
         if resp.status_code == 401 and attempt == 0:
-            # Token expirado — força re-login
             _hermes_token = None
             continue
 
@@ -63,7 +62,39 @@ async def _hermes_chat_request(message: str) -> str:
     raise HTTPException(status_code=502, detail="Não foi possível autenticar no assistente.")
 
 
-# ── Schemas ──────────────────────────────────────────────────────────────────
+def _build_context_message(message: str, ws: Optional[WorkshopSettings]) -> str:
+    """
+    Injeta o contexto do negócio no início da mensagem para que o Hermes
+    saiba com qual oficina está conversando e aja como assistente pessoal.
+    """
+    if not ws:
+        return message
+
+    lines = [
+        "=== CONTEXTO DO NEGÓCIO ===",
+        f"Você é o assistente pessoal da oficina '{ws.name}'.",
+        "Seu papel é ajudar o proprietário/equipe com:",
+        "- Agendamentos e lembretes de serviços",
+        "- Dúvidas sobre clientes e veículos",
+        "- Organização de tarefas do dia a dia",
+        "- Informações sobre a própria oficina",
+        "Sempre responda de forma clara, direta e útil para o contexto de uma oficina mecânica.",
+        "",
+    ]
+    if ws.phone:
+        lines.append(f"Telefone da oficina: {ws.phone}")
+    if ws.address:
+        lines.append(f"Endereço: {ws.address}")
+    if ws.cnpj:
+        lines.append(f"CNPJ: {ws.cnpj}")
+    lines.append("=== FIM DO CONTEXTO ===")
+    lines.append("")
+    lines.append(f"Pergunta do usuário: {message}")
+
+    return "\n".join(lines)
+
+
+# ── Schemas ───────────────────────────────────────────────────────────────────
 
 class ChatMessage(BaseModel):
     role: str       # "user" | "assistant"
@@ -87,15 +118,27 @@ async def hermes_chat(
     db: Session = Depends(get_db),
     cu: User = Depends(require_module("hermes")),
 ):
-    """Envia mensagem ao Hermes agente e retorna a resposta."""
+    """Envia mensagem ao Hermes com contexto do negócio do tenant."""
     if not settings.HERMES_API_URL or not settings.HERMES_EMAIL:
         raise HTTPException(
             status_code=503,
             detail="Hermes não configurado. Contate o administrador.",
         )
 
+    # Busca configurações da oficina do tenant atual
+    ws: Optional[WorkshopSettings] = (
+        db.query(WorkshopSettings)
+        .filter(WorkshopSettings.tenant_id == cu.tenant_id)
+        .first()
+    )
+
+    # Injeta contexto do negócio apenas na primeira mensagem (sem histórico)
+    # Para mensagens seguintes, o Hermes já tem o contexto em memória
+    is_first = len(payload.history) <= 1
+    full_message = _build_context_message(payload.message, ws) if is_first else payload.message
+
     try:
-        reply = await _hermes_chat_request(payload.message)
+        reply = await _hermes_chat_request(full_message)
         if not reply:
             logger.warning("Hermes retornou resposta vazia.")
             reply = "Sem resposta do assistente."

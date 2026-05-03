@@ -1156,10 +1156,21 @@ const HermesView: React.FC<{ settings: WorkshopSettings; onBack: () => void }> =
       <Header title="Assistente IA" subtitle={settings.name} logo={settings.logo} onBack={onBack} />
       <div className="flex-1 overflow-y-auto p-4 space-y-3 pb-32">
         {messages.length === 0 && (
-          <div className="flex flex-col items-center justify-center h-full text-center text-slate-400 pt-16">
-            <Bot size={48} className="mb-4 opacity-40" />
-            <p className="font-semibold text-slate-500 dark:text-slate-400">Olá! Sou o assistente da {settings.name}.</p>
-            <p className="text-sm mt-1 opacity-70">Como posso ajudar?</p>
+          <div className="flex flex-col items-center justify-center h-full text-center pt-10 px-4">
+            <div className="w-20 h-20 rounded-3xl bg-blue-500/10 flex items-center justify-center mb-4">
+              <Bot size={40} className="text-blue-500" />
+            </div>
+            <p className="font-bold text-lg text-slate-700 dark:text-slate-200">Olá! Sou o assistente da</p>
+            <p className="font-black text-xl text-blue-500 mb-1">{settings.name}</p>
+            <p className="text-sm text-slate-400 mb-6">Posso te ajudar com agendamentos, clientes, lembretes e muito mais.</p>
+            <div className="flex flex-wrap gap-2 justify-center">
+              {['📅 Agendar serviço', '👤 Buscar cliente', '📋 Tarefas do dia', '❓ Tirar dúvida'].map(chip => (
+                <button key={chip} onClick={() => setInput(chip.slice(3))}
+                  className="text-xs bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-3 py-1.5 rounded-full hover:bg-blue-50 dark:hover:bg-slate-700 transition-colors border border-slate-200 dark:border-slate-700">
+                  {chip}
+                </button>
+              ))}
+            </div>
           </div>
         )}
         {messages.map((m, i) => (
