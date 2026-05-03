@@ -75,4 +75,4 @@ export interface CRMLead {
   updatedAt: number;
 }
 
-export type ViewState = 'DASHBOARD' | 'CREATE_EDIT' | 'DETAILS' | 'SETTINGS' | 'AGENDA' | 'CRM' | 'CLIENTS';
+export type ViewState = 'DASHBOARD' | 'CREATE_EDIT' | 'DETAILS' | 'SETTINGS' | 'AGENDA' | 'CRM' | 'CLIENTS' | 'HERMES';

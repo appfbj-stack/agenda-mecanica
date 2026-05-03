@@ -10,6 +10,7 @@ from app.models import MODULES, Tenant, TenantModule, User, WorkshopSettings
 from app.routes.admin import router as admin_router
 from app.routes.auth import router as auth_router
 from app.routes.crm import router as crm_router
+from app.routes.hermes import router as hermes_router
 from app.routes.workshop import router as workshop_router
 
 logging.basicConfig(level=logging.INFO)
@@ -19,7 +20,7 @@ app = FastAPI(title="Oficina Mecânica API", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Ajustar em produção
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -27,12 +28,10 @@ app.add_middleware(
 
 
 def _seed_super_admin():
-    """Cria ou atualiza o super_admin com as credenciais das variáveis de ambiente."""
     db = SessionLocal()
     try:
         existing = db.query(User).filter(User.role == "super_admin").first()
         if not existing:
-            # super_admin usa tenant_id=0 (sentinel — não é um tenant real)
             if not db.query(Tenant).filter(Tenant.id == 0).first():
                 from sqlalchemy import text
                 db.execute(text(
@@ -50,7 +49,6 @@ def _seed_super_admin():
             db.commit()
             logger.info("Super admin criado: %s", settings.ADMIN_EMAIL)
         else:
-            # Sempre atualiza email e senha com os valores das variáveis de ambiente
             existing.email = settings.ADMIN_EMAIL
             existing.password_hash = hash_password(settings.ADMIN_PASSWORD)
             db.commit()
@@ -74,6 +72,7 @@ app.include_router(auth_router)
 app.include_router(admin_router)
 app.include_router(workshop_router)
 app.include_router(crm_router)
+app.include_router(hermes_router)
 
 
 @app.get("/health")

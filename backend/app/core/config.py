@@ -15,5 +15,8 @@ class Settings(BaseSettings):
     RESET_TOKEN_EXPIRE_MINUTES: int = 30
     FRONTEND_URL: str = "http://localhost:5173"
 
+    # Hermes agente — URL base da API (ex: https://hermes.fbautomacao.space)
+    HERMES_API_URL: str = ""
+
 
 settings = Settings()

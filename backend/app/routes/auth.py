@@ -140,3 +140,20 @@ def change_password(
     current_user.password_hash = hash_password(payload.new_password)
     db.commit()
     return {"message": "Senha alterada com sucesso"}
+
+
+@router.get("/me/modules")
+def my_modules(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Retorna os módulos habilitados para o tenant do usuário autenticado."""
+    # super_admin tem todos os módulos liberados
+    if current_user.role == "super_admin":
+        return {mod: True for mod in MODULES}
+
+    rows = db.query(TenantModule).filter(
+        TenantModule.tenant_id == current_user.tenant_id
+    ).all()
+    d = {r.module_name: r.enabled for r in rows}
+    return {mod: d.get(mod, False) for mod in MODULES}

@@ -158,3 +158,24 @@ export const updateLead = (id: number, data: Partial<Lead>) =>
   request<Lead>(`/crm/leads/${id}`, { method: "PUT", body: JSON.stringify(data) });
 export const deleteLead = (id: number) =>
   request<void>(`/crm/leads/${id}`, { method: "DELETE" });
+
+// ── Módulos do usuário ────────────────────────────────────────────────────────
+
+export const getMyModules = () => request<ModulesMap>("/auth/me/modules");
+
+// ── Hermes ────────────────────────────────────────────────────────────────────
+
+export interface HermesMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
+export interface HermesChatResponse {
+  reply: string;
+}
+
+export const hermesChat = (message: string, history: HermesMessage[]) =>
+  request<HermesChatResponse>("/hermes/chat", {
+    method: "POST",
+    body: JSON.stringify({ message, history }),
+  });

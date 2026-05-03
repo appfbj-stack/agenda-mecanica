@@ -1,11 +1,12 @@
 
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Car, User, Wrench, DollarSign, AlertCircle, Moon, Sun, FileDown, MessageCircle, Share2, Settings, PenTool, Calendar, Clock, Loader2, Trash2, CreditCard, Banknote, Landmark, AlertTriangle, Image as ImageIcon, Upload, X, Users, LayoutDashboard, Contact } from 'lucide-react';
+import { Plus, Search, Car, User, Wrench, DollarSign, AlertCircle, Moon, Sun, FileDown, MessageCircle, Share2, Settings, PenTool, Calendar, Clock, Loader2, Trash2, CreditCard, Banknote, Landmark, AlertTriangle, Image as ImageIcon, Upload, X, Users, LayoutDashboard, Contact, Bot, Send } from 'lucide-react';
 import { jsPDF } from "jspdf";
 import { ServiceRecord, ServiceStatus, ViewState, Part, WorkshopSettings, PaymentMethod, CRMLead, LeadStatus } from './types';
 import { Button, Input, Card, Header, TextArea } from './components/UI';
 import { SignaturePad } from './components/SignaturePad';
 import * as db from './services/dbService';
+import { getMyModules, hermesChat, HermesMessage, ModulesMap } from './src/api';
 import { STATUS_BADGE_STYLES, STATUS_COLORS } from './constants';
 
 // --- Global Helper Functions ---
@@ -1121,19 +1122,106 @@ const ThemeToggle: React.FC = () => {
 
 // --- App Component ---
 
+
+// ── HermesView — Chat com IA ──────────────────────────────────────────────────
+const HermesView: React.FC<{ settings: WorkshopSettings; onBack: () => void }> = ({ settings, onBack }) => {
+  const [messages, setMessages] = React.useState<HermesMessage[]>([]);
+  const [input, setInput] = React.useState('');
+  const [loading, setLoading] = React.useState(false);
+  const endRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    endRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  const send = async () => {
+    const text = input.trim();
+    if (!text || loading) return;
+    const userMsg: HermesMessage = { role: 'user', content: text };
+    setMessages(prev => [...prev, userMsg]);
+    setInput('');
+    setLoading(true);
+    try {
+      const { reply } = await hermesChat(text, [...messages, userMsg]);
+      setMessages(prev => [...prev, { role: 'assistant', content: reply }]);
+    } catch (e: any) {
+      setMessages(prev => [...prev, { role: 'assistant', content: `Erro: ${e.message}` }]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col h-screen bg-white dark:bg-slate-950">
+      <Header title="Assistente IA" subtitle={settings.name} logo={settings.logo} onBack={onBack} />
+      <div className="flex-1 overflow-y-auto p-4 space-y-3 pb-32">
+        {messages.length === 0 && (
+          <div className="flex flex-col items-center justify-center h-full text-center text-slate-400 pt-16">
+            <Bot size={48} className="mb-4 opacity-40" />
+            <p className="font-semibold text-slate-500 dark:text-slate-400">Olá! Sou o assistente da {settings.name}.</p>
+            <p className="text-sm mt-1 opacity-70">Como posso ajudar?</p>
+          </div>
+        )}
+        {messages.map((m, i) => (
+          <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+            <div className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm shadow-sm ${
+              m.role === 'user'
+                ? 'bg-blue-500 text-white rounded-br-none'
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-bl-none'
+            }`}>
+              {m.content}
+            </div>
+          </div>
+        ))}
+        {loading && (
+          <div className="flex justify-start">
+            <div className="bg-slate-100 dark:bg-slate-800 rounded-2xl rounded-bl-none px-4 py-3">
+              <div className="flex gap-1">
+                <span className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{animationDelay:'0ms'}}/>
+                <span className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{animationDelay:'150ms'}}/>
+                <span className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{animationDelay:'300ms'}}/>
+              </div>
+            </div>
+          </div>
+        )}
+        <div ref={endRef} />
+      </div>
+      <div className="fixed bottom-0 left-0 right-0 max-w-md mx-auto p-3 bg-white dark:bg-slate-950 border-t border-slate-100 dark:border-slate-800 flex gap-2">
+        <input
+          className="flex-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 dark:text-white"
+          placeholder="Digite sua mensagem..."
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && send()}
+          disabled={loading}
+        />
+        <button
+          onClick={send}
+          disabled={loading || !input.trim()}
+          className="bg-blue-500 hover:bg-blue-600 disabled:opacity-40 text-white rounded-xl px-4 py-2.5 transition-all"
+        >
+          <Send size={18} />
+        </button>
+      </div>
+    </div>
+  );
+};
+
 const App: React.FC<{ onLogout?: () => void }> = ({ onLogout }) => {
   const [view, setView] = useState<ViewState>('DASHBOARD');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [settings, setSettings] = useState<WorkshopSettings | null>(null);
   const [services, setServices] = useState<ServiceRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [modules, setModules] = useState<ModulesMap | null>(null);
 
   useEffect(() => {
     const init = async () => {
       try {
         setIsLoading(true);
-        const s = await db.getSettings();
+        const [s, mods] = await Promise.all([db.getSettings(), getMyModules().catch(() => null)]);
         setSettings(s);
+        if (mods) setModules(mods);
         try {
           const sv = await db.getServices();
           setServices(sv);
@@ -1224,8 +1312,15 @@ const App: React.FC<{ onLogout?: () => void }> = ({ onLogout }) => {
         />
       )}
 
+      {view === 'HERMES' && settings && (
+        <HermesView
+          settings={settings}
+          onBack={() => setView('DASHBOARD')}
+        />
+      )}
+
       {/* Bottom Navigation */}
-      {(view === 'DASHBOARD' || view === 'AGENDA' || view === 'CRM' || view === 'CLIENTS') && (
+      {(view === 'DASHBOARD' || view === 'AGENDA' || view === 'CRM' || view === 'CLIENTS' || view === 'HERMES') && (
         <div className="fixed bottom-0 left-0 right-0 max-w-md mx-auto p-4 flex justify-around bg-white/90 dark:bg-slate-950/90 backdrop-blur-xl border-t border-slate-100 dark:border-slate-800 z-50">
           <button 
             onClick={() => setView('DASHBOARD')}
@@ -1261,6 +1356,16 @@ const App: React.FC<{ onLogout?: () => void }> = ({ onLogout }) => {
             <span className="text-[10px] font-bold">Clientes</span>
           </button>
           
+
+          {modules?.hermes && (
+            <button 
+              onClick={() => setView('HERMES')}
+              className={`flex flex-col items-center gap-1 transition-all ${view === 'HERMES' ? 'text-neon-blue scale-110' : 'text-slate-400 opacity-60'}`}
+            >
+              <Bot size={22} className={view === 'HERMES' ? 'fill-neon-blue/10' : ''} />
+              <span className="text-[10px] font-bold">Hermes</span>
+            </button>
+          )}
           <button 
             onClick={() => setView('SETTINGS')}
             className={`flex flex-col items-center gap-1 text-slate-400 opacity-60 hover:opacity-100 transition-all`}
