@@ -27,7 +27,7 @@ app.add_middleware(
 
 
 def _seed_super_admin():
-    """Cria o super_admin inicial se não existir."""
+    """Cria ou atualiza o super_admin com as credenciais das variáveis de ambiente."""
     db = SessionLocal()
     try:
         existing = db.query(User).filter(User.role == "super_admin").first()
@@ -50,10 +50,14 @@ def _seed_super_admin():
             db.commit()
             logger.info("Super admin criado: %s", settings.ADMIN_EMAIL)
         else:
-            logger.info("Super admin já existe: %s", existing.email)
+            # Sempre atualiza email e senha com os valores das variáveis de ambiente
+            existing.email = settings.ADMIN_EMAIL
+            existing.password_hash = hash_password(settings.ADMIN_PASSWORD)
+            db.commit()
+            logger.info("Super admin atualizado: %s", settings.ADMIN_EMAIL)
     except Exception:
         db.rollback()
-        logger.exception("Erro ao criar super admin")
+        logger.exception("Erro ao criar/atualizar super admin")
     finally:
         db.close()
 
