@@ -36,8 +36,8 @@ def _seed_super_admin():
             if not db.query(Tenant).filter(Tenant.id == 0).first():
                 from sqlalchemy import text
                 db.execute(text(
-                    "INSERT INTO tenants (id, name, slug, active) "
-                    "VALUES (0, 'System', 'system', true) ON CONFLICT DO NOTHING"
+                    "INSERT INTO tenants (id, name, slug, active, created_at) "
+                    "VALUES (0, 'System', 'system', true, NOW()) ON CONFLICT DO NOTHING"
                 ))
             user = User(
                 tenant_id=0,
