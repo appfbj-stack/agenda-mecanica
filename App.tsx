@@ -1133,9 +1133,14 @@ const App: React.FC<{ onLogout?: () => void }> = ({ onLogout }) => {
       try {
         setIsLoading(true);
         const s = await db.getSettings();
-        const sv = await db.getServices();
         setSettings(s);
-        setServices(sv);
+        try {
+          const sv = await db.getServices();
+          setServices(sv);
+        } catch (svcErr) {
+          console.warn("Erro ao carregar serviços:", svcErr);
+          setServices([]);
+        }
       } catch (err) {
         console.error("Erro na inicialização:", err);
       } finally {
