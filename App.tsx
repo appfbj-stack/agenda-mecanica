@@ -6,8 +6,11 @@ import { ServiceRecord, ServiceStatus, ViewState, Part, WorkshopSettings, Paymen
 import { Button, Input, Card, Header, TextArea } from './components/UI';
 import { SignaturePad } from './components/SignaturePad';
 import * as db from './services/dbService';
-import { getMyModules, hermesChat, HermesMessage, ModulesMap, adminListTenants, adminToggleModule, getMe, UserOut } from './src/api';
+import { getMyModules, hermesChat, HermesMessage, ModulesMap, adminListTenants, adminToggleModule, adminUpdateTenant, getMe, UserOut } from './src/api';
 import { STATUS_BADGE_STYLES, STATUS_COLORS } from './constants';
+
+// 🔧 SEU NÚMERO WHATSAPP DE SUPORTE (só os dígitos, com DDI+DDD)
+const SUPORTE_WHATSAPP = '5541999999999'; // ← troque pelo seu número
 
 // --- Global Helper Functions ---
 
@@ -1243,6 +1246,21 @@ const AdminView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
       .finally(() => setLoading(false));
   }, []);
 
+  const toggleActive = async (tenant: TenantWithModules) => {
+    const newActive = !tenant.active;
+    setSaving(`active-${tenant.id}`);
+    try {
+      await adminUpdateTenant(tenant.id, { active: newActive });
+      setTenants(prev => prev.map(t => t.id === tenant.id ? { ...t, active: newActive } : t));
+      setMsg(newActive ? `✅ ${tenant.name} reativado.` : `🔒 ${tenant.name} bloqueado.`);
+      setTimeout(() => setMsg(null), 3000);
+    } catch {
+      setMsg('Erro ao alterar status do cliente.');
+    } finally {
+      setSaving(null);
+    }
+  };
+
   const toggle = async (tenantId: number, mod: string, cur: boolean) => {
     const key = `${tenantId}-${mod}`;
     setSaving(key);
@@ -1292,9 +1310,24 @@ const AdminView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                   <p className="font-semibold text-slate-800 dark:text-white text-sm">{tenant.name}</p>
                   <p className="text-xs text-slate-500">{tenant.slug}</p>
                 </div>
-                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${tenant.active ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400' : 'bg-red-100 text-red-700'}`}>
-                  {tenant.active ? 'ativo' : 'inativo'}
-                </span>
+                <button
+                  onClick={() => toggleActive(tenant)}
+                  disabled={!!saving}
+                  className={`flex items-center gap-1.5 text-xs px-3 py-1 rounded-full font-semibold transition-all border ${
+                    tenant.active
+                      ? 'bg-green-100 text-green-700 border-green-200 hover:bg-red-50 hover:text-red-600 hover:border-red-200 dark:bg-green-900/40 dark:text-green-400 dark:border-green-800'
+                      : 'bg-red-100 text-red-700 border-red-200 hover:bg-green-50 hover:text-green-700 hover:border-green-200'
+                  }`}
+                  title={tenant.active ? 'Clique para bloquear' : 'Clique para reativar'}
+                >
+                  {saving === `active-${tenant.id}` ? (
+                    <Loader2 size={12} className="animate-spin" />
+                  ) : tenant.active ? (
+                    <>{'🟢'} ativo</>
+                  ) : (
+                    <>{'🔴'} bloqueado</>
+                  )}
+                </button>
               </div>
               <div className="divide-y divide-slate-100 dark:divide-slate-800">
                 {Object.keys(MODULE_LABELS).map(mod => {
@@ -1337,12 +1370,17 @@ const App: React.FC<{ onLogout?: () => void }> = ({ onLogout }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [modules, setModules] = useState<ModulesMap | null>(null);
   const [me, setMe] = useState<UserOut | null>(null);
+  const [suspended, setSuspended] = useState(false);
 
   useEffect(() => {
     const init = async () => {
       try {
         setIsLoading(true);
-        const [s, mods, currentUser] = await Promise.all([db.getSettings(), getMyModules().catch(() => null), getMe().catch(() => null)]);
+        const [s, mods, currentUser] = await Promise.all([
+          db.getSettings(),
+          getMyModules().catch((e: any) => { if (e?.status === 402 || e?.message?.includes('402')) throw Object.assign(new Error('suspended'), {status:402}); return null; }),
+          getMe().catch(() => null)
+        ]);
         if (currentUser) setMe(currentUser);
         setSettings(s);
         if (mods) setModules(mods);
@@ -1353,7 +1391,8 @@ const App: React.FC<{ onLogout?: () => void }> = ({ onLogout }) => {
           console.warn("Erro ao carregar serviços:", svcErr);
           setServices([]);
         }
-      } catch (err) {
+      } catch (err: any) {
+        if (err?.status === 402) { setSuspended(true); setIsLoading(false); return; }
         console.error("Erro na inicialização:", err);
       } finally {
         setIsLoading(false);
@@ -1372,6 +1411,32 @@ const App: React.FC<{ onLogout?: () => void }> = ({ onLogout }) => {
     setSettings(newSettings);
     setView('DASHBOARD');
   };
+
+  if (suspended) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center text-white p-8 text-center">
+        <div className="w-24 h-24 bg-red-500/20 rounded-3xl flex items-center justify-center mb-6">
+          <span className="text-5xl">🔒</span>
+        </div>
+        <h1 className="text-2xl font-black mb-2">Acesso Suspenso</h1>
+        <p className="text-slate-400 mb-6 max-w-xs">
+          Sua assinatura está suspensa. Entre em contato com o administrador para regularizar o acesso.
+        </p>
+        <a
+          href={`https://wa.me/${SUPORTE_WHATSAPP}?text=Ol%C3%A1!%20Preciso%20regularizar%20minha%20assinatura.`}
+          className="bg-[#25D366] text-white font-bold px-6 py-3 rounded-2xl flex items-center gap-2 hover:opacity-90 transition-opacity"
+        >
+          <MessageCircle size={20} /> Falar no WhatsApp
+        </a>
+        <button
+          onClick={() => { setSuspended(false); setIsLoading(true); }}
+          className="mt-4 text-slate-500 text-sm underline"
+        >
+          Tentar novamente
+        </button>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (

@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.security import decode_token
-from app.models import TenantModule, User
+from app.models import Tenant, TenantModule, User
 
 logger = logging.getLogger(__name__)
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
@@ -24,6 +24,16 @@ def get_current_user(
     user = db.query(User).filter(User.id == int(payload["sub"]), User.active.is_(True)).first()
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuário não encontrado")
+
+    # super_admin nunca é bloqueado por inatividade do tenant
+    if user.role != "super_admin":
+        tenant = db.query(Tenant).filter(Tenant.id == user.tenant_id).first()
+        if tenant and not tenant.active:
+            raise HTTPException(
+                status_code=402,
+                detail="Assinatura suspensa. Entre em contato com o administrador.",
+            )
+
     return user
 
 
