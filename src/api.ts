@@ -180,3 +180,29 @@ export const hermesChat = (message: string, history: HermesMessage[]) =>
     body: JSON.stringify({ message, history }),
   });
 export const getMe = authMe;
+
+// ── Hermes Admin — plano e consumo ────────────────────────────────────────────
+
+export interface HermesUsageAdmin {
+  tenant_id: number;
+  plan: string;
+  plan_label: string;
+  messages_used: number;
+  messages_limit: number;
+  month: string;
+  percent: number;
+}
+
+export const adminGetHermesUsage = (tenantId: number) =>
+  request<HermesUsageAdmin>(`/admin/tenants/${tenantId}/hermes-usage`);
+
+export const adminSetHermesPlan = (tenantId: number, plan: string) =>
+  request<HermesUsageAdmin>(`/admin/tenants/${tenantId}/hermes-plan`, {
+    method: "PATCH",
+    body: JSON.stringify({ plan }),
+  });
+
+export const adminResetHermesUsage = (tenantId: number) =>
+  request<HermesUsageAdmin>(`/admin/tenants/${tenantId}/hermes-reset`, {
+    method: "POST",
+  });

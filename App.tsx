@@ -6,7 +6,7 @@ import { ServiceRecord, ServiceStatus, ViewState, Part, WorkshopSettings, Paymen
 import { Button, Input, Card, Header, TextArea } from './components/UI';
 import { SignaturePad } from './components/SignaturePad';
 import * as db from './services/dbService';
-import { getMyModules, hermesChat, HermesMessage, ModulesMap, adminListTenants, adminToggleModule, adminUpdateTenant, getMe, UserOut } from './src/api';
+import { getMyModules, hermesChat, HermesMessage, ModulesMap, adminListTenants, adminToggleModule, adminUpdateTenant, getMe, UserOut, adminGetHermesUsage, adminSetHermesPlan, adminResetHermesUsage } from './src/api';
 import { STATUS_BADGE_STYLES, STATUS_COLORS } from './constants';
 
 // 🔧 SEU NÚMERO WHATSAPP DE SUPORTE (só os dígitos, com DDI+DDD)
@@ -1148,7 +1148,10 @@ const HermesView: React.FC<{ settings: WorkshopSettings; onBack: () => void }> =
       const { reply } = await hermesChat(text, [...messages, userMsg]);
       setMessages(prev => [...prev, { role: 'assistant', content: reply }]);
     } catch (e: any) {
-      setMessages(prev => [...prev, { role: 'assistant', content: `Erro: ${e.message}` }]);
+      const msg = e?.response?.status === 429 || e?.message?.includes('429')
+        ? '🚫 Limite de mensagens do seu plano atingido este mês. Contate o administrador.'
+        : `Erro: ${e.message}`;
+      setMessages(prev => [...prev, { role: 'assistant', content: msg }]);
     } finally {
       setLoading(false);
     }
@@ -1238,10 +1241,44 @@ const AdminView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
+  const [hermesUsage, setHermesUsage] = useState<Record<number, any>>({});
+
+  const loadHermesUsage = async (tenantId: number) => {
+    try {
+      const u = await adminGetHermesUsage(tenantId);
+      setHermesUsage(prev => ({ ...prev, [tenantId]: u }));
+    } catch {}
+  };
+
+  const changePlan = async (tenantId: number, plan: string) => {
+    setSaving(`plan-${tenantId}`);
+    try {
+      const u = await adminSetHermesPlan(tenantId, plan);
+      setHermesUsage(prev => ({ ...prev, [tenantId]: u }));
+      setMsg(`✅ Plano alterado para ${u.plan_label}`);
+      setTimeout(() => setMsg(null), 3000);
+    } catch { setMsg('Erro ao alterar plano.'); }
+    finally { setSaving(null); }
+  };
+
+  const resetUsage = async (tenantId: number) => {
+    setSaving(`reset-${tenantId}`);
+    try {
+      const u = await adminResetHermesUsage(tenantId);
+      setHermesUsage(prev => ({ ...prev, [tenantId]: u }));
+      setMsg('🔄 Contador zerado!');
+      setTimeout(() => setMsg(null), 3000);
+    } catch { setMsg('Erro ao zerar contador.'); }
+    finally { setSaving(null); }
+  };
 
   useEffect(() => {
     adminListTenants()
-      .then(data => setTenants((data as TenantWithModules[]).filter(t => t.id !== 0)))
+      .then(data => {
+        const ts = (data as TenantWithModules[]).filter(t => t.id !== 0);
+        setTenants(ts);
+        ts.forEach(t => loadHermesUsage(t.id));
+      })
       .catch(() => setMsg('Erro ao carregar tenants.'))
       .finally(() => setLoading(false));
   }, []);
@@ -1354,6 +1391,45 @@ const AdminView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                   );
                 })}
               </div>
+              {/* Hermes IA — plano e consumo */}
+              {hermesUsage[tenant.id] && (
+                <div className="px-4 py-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Hermes IA — Consumo</p>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-xs text-slate-600 dark:text-slate-400">
+                      {hermesUsage[tenant.id].messages_used} / {hermesUsage[tenant.id].messages_limit} msgs
+                    </span>
+                    <span className="text-xs font-bold text-indigo-500">{hermesUsage[tenant.id].percent}%</span>
+                  </div>
+                  <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2 mb-3">
+                    <div
+                      className={`h-2 rounded-full transition-all ${hermesUsage[tenant.id].percent >= 90 ? 'bg-red-500' : hermesUsage[tenant.id].percent >= 70 ? 'bg-amber-500' : 'bg-indigo-500'}`}
+                      style={{ width: `${hermesUsage[tenant.id].percent}%` }}
+                    />
+                  </div>
+                  <div className="flex gap-2 items-center">
+                    <select
+                      value={hermesUsage[tenant.id].plan}
+                      onChange={e => changePlan(tenant.id, e.target.value)}
+                      disabled={!!saving}
+                      className="flex-1 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 px-2 py-1.5"
+                    >
+                      <option value="teste">🧪 Teste — 100 msgs</option>
+                      <option value="basico">📦 Básico — 1.000 msgs</option>
+                      <option value="pro">🚀 Pro — 5.000 msgs</option>
+                      <option value="ilimitado">♾️ Ilimitado</option>
+                    </select>
+                    <button
+                      onClick={() => resetUsage(tenant.id)}
+                      disabled={!!saving}
+                      className="text-xs bg-slate-100 dark:bg-slate-800 hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-500 hover:text-red-600 border border-slate-200 dark:border-slate-700 px-2 py-1.5 rounded-lg transition-all"
+                      title="Zerar contador"
+                    >
+                      {saving === `reset-${tenant.id}` ? '...' : '🔄 Zerar'}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           ))
         )}

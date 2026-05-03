@@ -159,3 +159,23 @@ class WorkshopSettings(Base):
     cnpj: Mapped[str | None] = mapped_column(String(30), nullable=True)
     logo_base64: Mapped[str | None] = mapped_column(Text, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+
+# ── HermesUsage — controle de consumo por tenant ──────────────────────────────
+
+HERMES_PLANS = {
+    "teste":     {"messages": 100,    "max_chars": 300,  "label": "Teste"},
+    "basico":    {"messages": 1000,   "max_chars": 400,  "label": "Básico"},
+    "pro":       {"messages": 5000,   "max_chars": 800,  "label": "Pro"},
+    "ilimitado": {"messages": 999999, "max_chars": 1500, "label": "Ilimitado"},
+}
+
+class HermesUsage(Base):
+    __tablename__ = "hermes_usage"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id"), unique=True, index=True)
+    plan: Mapped[str] = mapped_column(String(50), default="basico")   # basico | pro | ilimitado
+    messages_used: Mapped[int] = mapped_column(Integer, default=0)
+    month: Mapped[str] = mapped_column(String(7), default="")          # "2026-05"
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)

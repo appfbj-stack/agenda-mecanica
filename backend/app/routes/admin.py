@@ -1,5 +1,6 @@
 """Painel super_admin: gerenciar tenants e módulos."""
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -153,3 +154,93 @@ def create_super_admin(
     db.commit()
     db.refresh(user)
     return user
+
+
+# ── Hermes: plano e consumo por tenant ────────────────────────────────────────
+
+from app.models import HermesUsage, HERMES_PLANS   # noqa: E402 (append)
+from app.routes.hermes import _get_or_create_usage, _current_month   # noqa: E402
+
+
+class HermesPlanUpdate(BaseModel):
+    plan: str   # teste | basico | pro | ilimitado
+
+
+class HermesUsageAdminOut(BaseModel):
+    tenant_id: int
+    plan: str
+    plan_label: str
+    messages_used: int
+    messages_limit: int
+    month: str
+    percent: float
+
+    model_config = {"from_attributes": True}
+
+
+@router.get("/tenants/{tenant_id}/hermes-usage", response_model=HermesUsageAdminOut)
+def get_hermes_usage(
+    tenant_id: int,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_super_admin),
+):
+    usage = _get_or_create_usage(db, tenant_id)
+    plan = HERMES_PLANS.get(usage.plan, HERMES_PLANS["basico"])
+    pct = min(100.0, round(usage.messages_used / plan["messages"] * 100, 1))
+    return HermesUsageAdminOut(
+        tenant_id=tenant_id,
+        plan=usage.plan,
+        plan_label=plan["label"],
+        messages_used=usage.messages_used,
+        messages_limit=plan["messages"],
+        month=usage.month,
+        percent=pct,
+    )
+
+
+@router.patch("/tenants/{tenant_id}/hermes-plan", response_model=HermesUsageAdminOut)
+def set_hermes_plan(
+    tenant_id: int,
+    payload: HermesPlanUpdate,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_super_admin),
+):
+    if payload.plan not in HERMES_PLANS:
+        raise HTTPException(status_code=400, detail=f"Plano inválido. Use: {list(HERMES_PLANS.keys())}")
+    usage = _get_or_create_usage(db, tenant_id)
+    usage.plan = payload.plan
+    db.commit()
+    plan = HERMES_PLANS[payload.plan]
+    pct = min(100.0, round(usage.messages_used / plan["messages"] * 100, 1))
+    return HermesUsageAdminOut(
+        tenant_id=tenant_id,
+        plan=usage.plan,
+        plan_label=plan["label"],
+        messages_used=usage.messages_used,
+        messages_limit=plan["messages"],
+        month=usage.month,
+        percent=pct,
+    )
+
+
+@router.post("/tenants/{tenant_id}/hermes-reset", response_model=HermesUsageAdminOut)
+def reset_hermes_usage(
+    tenant_id: int,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_super_admin),
+):
+    """Zera o contador de mensagens do tenant (ex: ao renovar plano)."""
+    usage = _get_or_create_usage(db, tenant_id)
+    usage.messages_used = 0
+    usage.month = _current_month()
+    db.commit()
+    plan = HERMES_PLANS.get(usage.plan, HERMES_PLANS["basico"])
+    return HermesUsageAdminOut(
+        tenant_id=tenant_id,
+        plan=usage.plan,
+        plan_label=plan["label"],
+        messages_used=0,
+        messages_limit=plan["messages"],
+        month=usage.month,
+        percent=0.0,
+    )
