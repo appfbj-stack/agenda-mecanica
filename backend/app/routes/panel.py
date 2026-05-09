@@ -64,7 +64,7 @@ main{padding:32px;max-width:1200px;margin:0 auto}
 .toast{position:fixed;bottom:24px;right:24px;background:#1a1d2e;border:1px solid #2d3148;border-radius:10px;padding:14px 20px;font-size:.88rem;transform:translateY(100px);opacity:0;transition:all .3s;z-index:999}
 .toast.show{transform:translateY(0);opacity:1}
 .toast.success{border-color:#059669;color:#34d399}
-.toast.error{border-color:#dc2626;color:#f87171}
+.toast.error{border-color:#dc2626;color:#f87171}@media(max-width:640px){header{padding:12px 16px}main{padding:16px}.statsBar{grid-template-columns:repeat(2,1fr);gap:10px}.tenantGrid{grid-template-columns:1fr}.loginCard{padding:28px 20px}.statCard{padding:14px 16px}.val{font-size:1.6rem}}@media(max-width:380px){.statsBar{grid-template-columns:1fr}.val{font-size:1.4rem}header .logo{font-size:1.1rem}}
 </style>
 </head>
 <body>
