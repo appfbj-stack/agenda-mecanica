@@ -53,11 +53,9 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)):
     db.add(tenant)
     db.flush()
 
-    # Seed default modules (all disabled)
     for mod in MODULES:
         db.add(TenantModule(tenant_id=tenant.id, module_name=mod, enabled=False))
 
-    # Seed workshop settings
     db.add(WorkshopSettings(tenant_id=tenant.id, name=payload.workshop_name))
 
     user = User(
@@ -81,6 +79,15 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
     if not user or not verify_password(payload.password, user.password_hash):
         raise HTTPException(status_code=401, detail="E-mail ou senha inválidos")
 
+    # Verifica se o tenant está ativo (bloqueio por inadimplência)
+    if user.role != "super_admin":
+        tenant = db.query(Tenant).filter(Tenant.id == user.tenant_id).first()
+        if not tenant or not tenant.active:
+            raise HTTPException(
+                status_code=403,
+                detail="Conta suspensa. Entre em contato com o suporte."
+            )
+
     token = create_access_token({"sub": str(user.id), "tenant_id": str(user.tenant_id)})
     return TokenResponse(access_token=token, user=UserOut.model_validate(user))
 
@@ -100,11 +107,9 @@ def request_reset(payload: ResetPasswordRequest, db: Session = Depends(get_db)):
             minutes=settings.RESET_TOKEN_EXPIRE_MINUTES
         )
         db.commit()
-        # Em produção: enviar e-mail com link de reset
-        # Por ora, o token é retornado para facilitar o desenvolvimento
         return {
             "message": "Se o e-mail existir, você receberá as instruções.",
-            "_dev_token": token,  # remover em produção
+            "_dev_token": token,
         }
     return {"message": "Se o e-mail existir, você receberá as instruções."}
 
@@ -147,8 +152,6 @@ def my_modules(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Retorna os módulos habilitados para o tenant do usuário autenticado."""
-    # super_admin tem todos os módulos liberados
     if current_user.role == "super_admin":
         return {mod: True for mod in MODULES}
 
