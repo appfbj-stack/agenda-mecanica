@@ -11,6 +11,7 @@ from app.routes.admin import router as admin_router
 from app.routes.auth import router as auth_router
 from app.routes.crm import router as crm_router
 from app.routes.hermes import router as hermes_router
+from app.routes.panel import router as panel_router
 from app.routes.workshop import router as workshop_router
 
 logging.basicConfig(level=logging.INFO)
@@ -25,7 +26,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 
 def _seed_super_admin():
     db = SessionLocal()
@@ -59,7 +59,6 @@ def _seed_super_admin():
     finally:
         db.close()
 
-
 @app.on_event("startup")
 def startup():
     logger.info("Criando tabelas...")
@@ -67,13 +66,12 @@ def startup():
     _seed_super_admin()
     logger.info("Backend pronto.")
 
-
 app.include_router(auth_router)
 app.include_router(admin_router)
 app.include_router(workshop_router)
 app.include_router(crm_router)
 app.include_router(hermes_router)
-
+app.include_router(panel_router)
 
 @app.get("/health")
 def health():
