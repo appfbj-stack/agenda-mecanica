@@ -1,4 +1,5 @@
 import logging
+from typing import Optional
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
@@ -9,13 +10,24 @@ from app.core.security import decode_token
 from app.models import Tenant, TenantModule, User
 
 logger = logging.getLogger(__name__)
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login", auto_error=False)
 
 
 def get_current_user(
     db: Session = Depends(get_db),
-    token: str = Depends(oauth2_scheme),
+    token: Optional[str] = Depends(oauth2_scheme),
 ) -> User:
+    # Se não há token, retorna o usuário admin padrão (modo sem login)
+    if not token:
+        user = db.query(User).filter(User.email == "admin@oficina.com", User.active.is_(True)).first()
+        if user:
+            return user
+        # Se nem o admin existe ainda, busca qualquer usuário ativo
+        user = db.query(User).filter(User.active.is_(True)).first()
+        if user:
+            return user
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Nenhum usuário disponível")
+
     try:
         payload = decode_token(token)
     except ValueError:
@@ -39,26 +51,21 @@ def get_current_user(
 
 def require_super_admin(current_user: User = Depends(get_current_user)) -> User:
     if current_user.role != "super_admin":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso restrito a super admin")
+        raise HTTPException(status_code=403, detail="Acesso negado")
     return current_user
 
 
 def require_admin_or_super(current_user: User = Depends(get_current_user)) -> User:
-    if current_user.role not in ("super_admin", "admin"):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso restrito a administradores")
+    if current_user.role not in ("admin", "super_admin"):
+        raise HTTPException(status_code=403, detail="Acesso negado")
     return current_user
 
 
 def require_module(module_name: str):
-    """Dependency factory — verifica se o módulo está habilitado para o tenant."""
-
     def _check(
         db: Session = Depends(get_db),
         current_user: User = Depends(get_current_user),
     ) -> User:
-        # super_admin sempre tem acesso
-        if current_user.role == "super_admin":
-            return current_user
         mod = (
             db.query(TenantModule)
             .filter(
@@ -69,10 +76,7 @@ def require_module(module_name: str):
             .first()
         )
         if not mod:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Módulo '{module_name}' não está ativo no seu plano.",
-            )
+            raise HTTPException(status_code=403, detail=f"Módulo '{module_name}' não habilitado")
         return current_user
 
     return _check
